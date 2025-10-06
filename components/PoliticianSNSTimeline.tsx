@@ -25,6 +25,8 @@ interface SNSPost {
   hashtags: string[];
   mentions: string[];
   politicians: PoliticianInfo | null;
+  // Optional thumbnail for preview; if absent, fall back to first media url
+  thumbnail_url?: string | null;
 }
 
 interface SNSTimelineItem {
@@ -246,10 +248,10 @@ export default function PoliticianSNSTimeline({ userId }: PoliticianSNSTimelineP
                       {truncateContent(post.content, 200) || '投稿'}
                     </p>
 
-                    {post.thumbnail_url && (
+                    {(post.thumbnail_url || post.media_urls?.[0]) && (
                       <div className="mb-4">
                         <img
-                          src={post.thumbnail_url}
+                          src={post.thumbnail_url || post.media_urls?.[0]}
                           alt={post.content || 'サムネイル'}
                           className="w-full max-w-md rounded-md border"
                           onError={(e) => {

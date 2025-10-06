@@ -1,4 +1,4 @@
-import { Post } from '@/type/types';
+import { Post } from '@/types';
 import { Card } from './ui/Card';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
