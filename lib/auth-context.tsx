@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Profile } from '@/type/types';
+import { Profile } from '@/types';
 
 interface AuthContextType {
   profile: Profile | null;

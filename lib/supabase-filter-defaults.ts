@@ -1,5 +1,5 @@
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { PostCategory, PostSourceType, EventType } from '@/type/types';
+import { PostCategory, PostSourceType, EventType } from '@/types';
 
 export interface UserFilterDefaults {
   id: string;
