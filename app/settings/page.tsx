@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { supabase } from '@/lib/supabase';
-import { Profile } from '@/type/types';
+import { Profile } from '@/types';
 
 export default function SettingsPage() {
   const { profile: authProfile, userEmail, refreshProfile } = useAuth();

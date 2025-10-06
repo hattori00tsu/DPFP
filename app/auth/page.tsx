@@ -1,18 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
-export default function AuthPage() {
+function AuthPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(searchParams.get('error'));
-
-  // 自動遷移は行わず、コールバックで最終遷移を決定
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -86,5 +84,13 @@ export default function AuthPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">読み込み中...</div>}>
+      <AuthPageInner />
+    </Suspense>
   );
 }
