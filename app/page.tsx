@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { Calendar, Users, MessageSquare, ArrowRight } from 'lucide-react';
-import { Footer } from '@/components/Footer';
+import { Layout } from '@/components/Layout';
 
 export default function Home() {
   const router = useRouter();
@@ -34,6 +34,7 @@ export default function Home() {
 
   return (
     <>
+    <Layout>
       {/* ヒーローセクション */}
       <div className="bg-gradient-to-br from-primary-50 to-primary-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
@@ -125,7 +126,7 @@ export default function Home() {
       <div className="bg-primary-600">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-white mb-4">
+            <h2 className="text-3xl font-bold text-black mb-4">
               今すぐ始めましょう
               ※このプロジェクトは有志による非公式プロジェクトです。また、課金の表示はありますが、未実装です。
             </h2>
@@ -142,7 +143,7 @@ export default function Home() {
           </div>
         </div>
       </div>
-      <Footer />
-    </>
+        </Layout>
+        </>
   );
 }
