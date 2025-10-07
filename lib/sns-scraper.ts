@@ -189,7 +189,7 @@ export class SNSScraper {
         posts.push({
           platform: this.normalizePlatformForPosts(platformKey),
           postId: videoId,
-          title: title.substring(0, 200),
+          title: title,
           // 説明文は保存しない
           content: undefined,
           // サムネイルは videoId から生成
@@ -285,7 +285,7 @@ export class SNSScraper {
           posts.push({
             platform: this.normalizePlatformForPosts(platformKey),
             postId,
-            title: title.length > 100 ? title.substring(0, 100) + '...' : title,
+            title: title,
             // 説明文は保存しない
             content: undefined,
             thumbnailUrl,
@@ -392,7 +392,7 @@ export class SNSScraper {
         posts.push({
           platform: this.normalizePlatformForPosts(setting.platform),
           postId,
-          title: title.substring(0, 200),
+          title: title,
           // 説明文は保存しない
           content: undefined,
           thumbnailUrl: postId ? `https://i.ytimg.com/vi/${postId}/hqdefault.jpg` : undefined,

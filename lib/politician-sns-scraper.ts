@@ -211,7 +211,7 @@ export class PoliticianSNSScraper {
           posts.push({
             platform: 'twitter',
             postId: postId || link,
-            content: title.length > 100 ? title.substring(0, 100) + '...' : title,
+            content: title,
             thumbnailUrl,
             postUrl: link,
             publishedAt
@@ -651,7 +651,7 @@ export class PoliticianSNSScraper {
             allPosts.push({
               platform: 'niconico',
               postId: contentId,
-              content: title ? `🎬 ${title.substring(0, 200)}` : `動画 ${contentId}`,
+              content: title ? `🎬 ${title}` : `動画 ${contentId}`,
               thumbnailUrl: thumbnail || undefined,
               mediaUrls: thumbnail ? [thumbnail] : undefined,
               postUrl: `https://nicochannel.jp/${channelId}/video/${contentId}`,
@@ -692,7 +692,7 @@ export class PoliticianSNSScraper {
             allPosts.push({
               platform: 'niconico',
               postId: contentId,
-              content: title ? `📺 ${title.substring(0, 200)}` : `生放送 ${contentId}`,
+              content: title ? `📺 ${title}` : `生放送 ${contentId}`,
               thumbnailUrl: thumbnail || undefined,
               mediaUrls: thumbnail ? [thumbnail] : undefined,
               postUrl: `https://nicochannel.jp/${channelId}/live/${contentId}`,
@@ -733,7 +733,7 @@ export class PoliticianSNSScraper {
             allPosts.push({
               platform: 'niconico',
               postId: contentId,
-              content: title ? `📰 ${title.substring(0, 200)}` : `記事 ${contentId}`,
+              content: title ? `📰 ${title}` : `記事 ${contentId}`,
               thumbnailUrl: thumbnail || undefined,
               mediaUrls: thumbnail ? [thumbnail] : undefined,
               postUrl: `https://nicochannel.jp/${channelId}/articles/news/${contentId}`,
@@ -791,7 +791,7 @@ export class PoliticianSNSScraper {
           posts.push({
             platform: 'niconico',
             postId: contentId,
-            content: video.title ? `🎬 ${video.title.substring(0, 200)}` : undefined,
+            content: video.title ? `🎬 ${video.title}` : undefined,
             thumbnailUrl: video.thumbnail_url || undefined,
             mediaUrls: video.thumbnail_url ? [video.thumbnail_url] : undefined,
             postUrl: `https://www.nicovideo.jp/watch/${contentId}`,
@@ -896,7 +896,7 @@ export class PoliticianSNSScraper {
       posts.push({
         platform: 'niconico',
         postId: videoId,
-        content: title.substring(0, 200),
+        content: title,
         thumbnailUrl: thumbnailUrl || undefined,
         mediaUrls: thumbnailUrl ? [thumbnailUrl] : undefined,
         postUrl: videoUrl,
@@ -1103,7 +1103,7 @@ export class PoliticianSNSScraper {
               posts.push({
                 platform: 'niconico',
                 postId: contentId,
-                content: `${isLive ? '📺 ' : '🎬 '}${title.substring(0, 200)}`,
+                content: `${isLive ? '📺 ' : '🎬 '}${title}`,
                 thumbnailUrl: thumbnailUrl || undefined,
                 mediaUrls: thumbnailUrl ? [thumbnailUrl] : undefined,
                 postUrl: contentUrl,
@@ -1237,7 +1237,7 @@ export class PoliticianSNSScraper {
             posts.push({
               platform: 'niconico',
               postId: `article_${articleId}`,
-              content: `📰 ${title.substring(0, 200)}`,
+              content: `📰 ${title}`,
               thumbnailUrl: thumbnailUrl || undefined,
               mediaUrls: thumbnailUrl ? [thumbnailUrl] : undefined,
               postUrl: articleDetailUrl,

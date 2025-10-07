@@ -61,6 +61,11 @@ export default function OfficialPage() {
   const [newsVisibleCount, setNewsVisibleCount] = useState(20);
   const [eventsVisibleCount, setEventsVisibleCount] = useState(20);
   const [snsVisibleCount, setSnsVisibleCount] = useState(20);
+  const [expandedSnsIds, setExpandedSnsIds] = useState<Record<string, boolean>>({});
+
+  const toggleSnsExpand = (id: string) => {
+    setExpandedSnsIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
 
   // 一括取得API用フェッチャー
   const combinedFetcher = async () => {
@@ -640,9 +645,25 @@ export default function OfficialPage() {
                             </span>
                           </div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            {sns.title && sns.title.length > 140 
-                              ? sns.title.substring(0, 140) + '...' 
-                              : sns.title || '投稿'}
+                            {(() => {
+                              const full = sns.title || '投稿';
+                              const isLong = (sns.title?.length || 0) > 140;
+                              const expanded = !!expandedSnsIds[sns.id];
+                              const shown = !isLong || expanded ? full : full.substring(0, 140) + '...';
+                              return (
+                                <>
+                                  {shown}
+                                  {isLong && (
+                                    <button
+                                      onClick={() => toggleSnsExpand(sns.id)}
+                                      className="ml-2 text-xs text-gray-600 underline align-baseline"
+                                    >
+                                      {expanded ? '閉じる' : 'さらに表示'}
+                                    </button>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </h3>
                           {sns.thumbnail_url && (
                             <div className="mb-4">
