@@ -22,6 +22,7 @@ export interface ScrapedEvent {
   prefecture?: string;
   organizer?: string;
   eventType?: string;
+  category?: string;
   capacity?: number;
   registrationRequired?: boolean;
   registrationUrl?: string;
@@ -471,33 +472,10 @@ export class KokuminScraper {
           }
         }
 
-        // イベントタイプの推定（より詳細に分類）
-        let eventType = 'other';
-        const titleLower = title.toLowerCase();
-        const parentTextLower = parentText.toLowerCase();
-        
-        if (titleLower.includes('候補者募集') || parentTextLower.includes('候補者募集')) {
-          eventType = 'candidate_recruitment';
-        } else if (titleLower.includes('街頭') || titleLower.includes('集会') || titleLower.includes('rally') || 
-                   parentTextLower.includes('街頭') || parentTextLower.includes('集会')) {
-          eventType = 'street_campaign_support';
-        } else if (titleLower.includes('ポスティング') || parentTextLower.includes('ポスティング')) {
-          eventType = 'poster_posting';
-        } else if (titleLower.includes('ポスター') || parentTextLower.includes('ポスター掲示')) {
-          eventType = 'poster_display';
-        } else if (titleLower.includes('室内') || parentTextLower.includes('室内')) {
-          eventType = 'indoor_work';
-        } else if (titleLower.includes('キャンパス') || parentTextLower.includes('キャンパス')) {
-          eventType = 'citizen_campus';
-        } else if (titleLower.includes('タウンミーティング') || titleLower.includes('会議') || 
-                   parentTextLower.includes('タウンミーティング') || parentTextLower.includes('懇談')) {
-          eventType = 'town_meeting';
-        } else if (titleLower.includes('オフ会') || parentTextLower.includes('オフ会')) {
-          eventType = 'off_meeting';
-        } else if (titleLower.includes('ボランティア') || titleLower.includes('volunteer') || 
-                   parentTextLower.includes('ボランティア') || parentTextLower.includes('支援')) {
-          eventType = 'indoor_event_support';
-        }
+        // イベントカテゴリを推定（UIのeventTypeLabelsに合わせる）
+        const category = this.inferEventCategory(title, parentText);
+        // 互換のため簡易eventTypeも保持（将来削除可）
+        const eventType = category;
 
         // 説明の取得（親要素のテキストから）
         let description = parentText.replace(title, '').trim();
@@ -515,6 +493,7 @@ export class KokuminScraper {
           location: location || undefined,
           prefecture: prefecture || undefined, // officialページ用のprefectureフィールドを追加
           eventType,
+          category,
           registrationRequired: parentText.includes('申込') || parentText.includes('登録')
         });
       });
@@ -602,19 +581,9 @@ export class KokuminScraper {
         }
       }
 
-      // 種別（簡易推定）
-      let eventType = 'other';
-      const lt = title.toLowerCase();
-      const lp = parentText.toLowerCase();
-      if (lt.includes('候補者募集') || lp.includes('候補者募集')) eventType = 'candidate_recruitment';
-      else if (lt.includes('街頭') || lt.includes('集会') || lp.includes('街頭') || lp.includes('集会')) eventType = 'street_campaign_support';
-      else if (lt.includes('ポスティング') || lp.includes('ポスティング')) eventType = 'poster_posting';
-      else if (lt.includes('ポスター') || lp.includes('ポスター掲示')) eventType = 'poster_display';
-      else if (lt.includes('室内') || lp.includes('室内')) eventType = 'indoor_work';
-      else if (lt.includes('キャンパス') || lp.includes('キャンパス')) eventType = 'citizen_campus';
-      else if (lt.includes('タウンミーティング') || lp.includes('タウンミーティング') || lt.includes('会議') || lp.includes('懇談')) eventType = 'town_meeting';
-      else if (lt.includes('オフ会') || lp.includes('オフ会')) eventType = 'off_meeting';
-      else if (lt.includes('ボランティア') || lp.includes('ボランティア')) eventType = 'indoor_event_support';
+      // カテゴリ推定
+      const category = this.inferEventCategory(title, parentText);
+      const eventType = category;
 
       let description = $link.closest('li, div').text().trim();
       if (description.startsWith(title)) description = description.slice(title.length).trim();
@@ -628,6 +597,7 @@ export class KokuminScraper {
         location: location || undefined,
         prefecture: prefecture || undefined,
         eventType,
+        category,
         registrationRequired: parentText.includes('申込') || parentText.includes('登録')
       });
     });
@@ -703,6 +673,51 @@ export class KokuminScraper {
     }
 
     return 'party_hq'; // デフォルト
+  }
+
+  // 党本部ボランティア用のカテゴリ推定
+  // public/category.tsx の eventTypeLabels に対応
+  private inferEventCategory(title: string, context: string): string {
+    const t = (title || '').toLowerCase();
+    const c = (context || '').toLowerCase();
+
+    // 党本部定例ポスティング
+    if (t.includes('定例ポスティング') || c.includes('定例ポスティング')) return 'party_hq_regular_posting';
+
+    // 候補者募集説明会
+    if (t.includes('候補者募集') || c.includes('候補者募集')) return 'candidate_recruitment';
+
+    // 街頭活動サポート（街頭/集会/rally）
+    if (t.includes('街頭') || t.includes('集会') || t.includes('rally') || c.includes('街頭') || c.includes('集会')) {
+      return 'street_campaign_support';
+    }
+
+    // ポスティング（一般）
+    if (t.includes('ポスティング') || c.includes('ポスティング')) return 'poster_posting';
+
+    // ポスター掲示・広報板設置
+    if (t.includes('ポスター') || c.includes('ポスター掲示') || c.includes('広報板')) return 'poster_display';
+
+    // 室内作業
+    if (t.includes('室内') || c.includes('室内')) return 'indoor_work';
+
+    // こくみんキャンパス
+    if (t.includes('キャンパス') || c.includes('キャンパス')) return 'citizen_campus';
+
+    // タウンミーティング・会議・懇談
+    if (t.includes('タウンミーティング') || t.includes('会議') || c.includes('タウンミーティング') || c.includes('懇談')) {
+      return 'town_meeting';
+    }
+
+    // オフ会
+    if (t.includes('オフ会') || c.includes('オフ会')) return 'off_meeting';
+
+    // 室内イベント運営サポート（ボランティア、支援）
+    if (t.includes('ボランティア') || t.includes('volunteer') || c.includes('ボランティア') || c.includes('支援')) {
+      return 'indoor_event_support';
+    }
+
+    return 'other';
   }
 
   private async fetchArticleContent(url: string): Promise<string | undefined> {
@@ -853,15 +868,12 @@ export class KokuminScraper {
           continue;
         }
 
-        // official_eventsテーブルのカテゴリーに合わせてマッピング
-        // public/category.tsxのeventTypeLabelsに合わせる
-        let category = 'other';
-        if (event.eventType === 'rally') {
-          category = 'street_campaign_support';
-        } else if (event.eventType === 'meeting') {
-          category = 'town_meeting';
-        } else if (event.eventType === 'volunteer') {
-          category = 'poster_posting';
+        // カテゴリは推定済みを優先。後方互換で古いeventTypeもマップ
+        let category = event.category || event.eventType || 'other';
+        if (!event.category && event.eventType) {
+          if (event.eventType === 'rally') category = 'street_campaign_support';
+          else if (event.eventType === 'meeting') category = 'town_meeting';
+          else if (event.eventType === 'volunteer') category = 'poster_posting';
         }
 
         
