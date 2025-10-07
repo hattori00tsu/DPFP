@@ -48,13 +48,17 @@ export const prefectures = [
     {"id":"47","name_ja":"沖縄県","name_en":"Okinawa"},
     {"id":"48","name_ja":"全国どこでも","name_en":"All over the country"},
     {"id":"49","name_ja":"衆院北海道","name_en":"Hokkaido"},
-    {"id":"50","name_ja":"衆院北関東","name_en":"Tohoku"},
-    {"id":"51","name_ja":"衆院南関東","name_en":"Kanto"},
+    {"id":"50","name_ja":"衆院東北 ","name_en":"Tohoku"},
+    {"id":"51","name_ja":"衆院北関東","name_en":"Tohoku"},
+    {"id":"52","name_ja":"衆院南関東","name_en":"Kanto"},
     {"id":"53","name_ja":"衆院東京都","name_en":"Tokyo"},
     {"id":"54","name_ja":"衆院北陸信越","name_en":"Hokkaido"},
     {"id":"55","name_ja":"衆院東海","name_en":"Chubu"},
-    {"id":"56","name_ja":"衆院近畿","name_en":"Kinki"}  ,
+    {"id":"56","name_ja":"衆院近畿","name_en":"Kinki"},
     {"id":"57","name_ja":"衆院四国","name_en":"Shikoku"},
     {"id":"58","name_ja":"衆院九州","name_en":"Kyushu"},
+    {"id":"59","name_ja":"参院比例区","name_en":"All over the country"},
   ]
+  
+
   

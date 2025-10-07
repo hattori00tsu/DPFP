@@ -6,7 +6,8 @@ export const sourceTypeLabels = {
     politician_candidate: '国会議員候補者',
     prefecture: '都道府県議員',
     prefecture_candidate: '都道府県議員候補者',
-    prefecture_union: '都道府県連',
+    prefecture_union: '都道府県支部',
+    prefecture_union_volunteer: '都道府県支部長',
     student: '学生部',
     sns: 'SNS公式アカウント',
     other: 'その他',
@@ -55,24 +56,31 @@ export const snsTypeLabels = {
 // ソースカテゴリー
 export const mediaTypeLabels = {
     x: 'X（Twitter）',
-    // facebook: 'Facebook',
-    // instagram: 'Instagram',
+    facebook: 'Facebook',
+    instagram: 'Instagram',
     youtube: 'YouTube',
     // line: 'LINE',
     // blog: 'Blog',
     note: 'Note',
     // tiktok: 'Tiktok',
     // niconico: 'Niconico',
+    election_dot_com: '選挙ドットコム',
 };
 
 // 議員カテゴリー
 export const politicianTypeLabels = {
+    all: 'すべて',
     representative: '衆議院議員',
     senator: '参議院議員',
     national_candidate: '国会議員候補',
-    local: '地方議員',
-    local_assembly: '地方議員候補',
-    other: 'その他',
+};
+
+export const LocalpoliticianTypeLabels = {
+    all: 'すべて',
+    representative: '都道府県議員'
+    ,candidate: '都道府県議員候補',
+    senator: '市区町村議員',
+    city_candidate: '市区町村議員候補',
 };
 
 // 政党の党員ランク
