@@ -127,6 +127,7 @@ export default function Home() {
           <div className="text-center">
             <h2 className="text-3xl font-bold text-white mb-4">
               今すぐ始めましょう
+              ※このプロジェクトは有志による非公式プロジェクトです。また、課金の表示はありますが、未実装です。
             </h2>
             <p className="text-xl text-primary-100 mb-8">
               Googleアカウントで簡単にログインできます
