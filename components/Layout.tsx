@@ -97,16 +97,6 @@ export function Layout({ children }: LayoutProps) {
 
             <div className="flex items-center">
               <div className="hidden md:flex md:items-center md:space-x-4">
-                <span className="text-sm text-gray-700">{profile.name}</span>
-                <span className="text-xs px-2 py-1 bg-primary-100 text-primary-700 rounded-full">
-                  {profile.role}
-                </span>
-                <button
-                  onClick={handleSignOut}
-                  className="text-gray-500 hover:text-gray-700 transition"
-                >
-                  <LogOut className="w-5 h-5" />
-                </button>
               </div>
 
               <button

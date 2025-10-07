@@ -49,7 +49,6 @@ export default function PoliticianSNSTimeline({ userId }: PoliticianSNSTimelineP
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
-
   const toggleExpand = (id: string) => {
     setExpandedMap(prev => ({ ...prev, [id]: !prev[id] }));
   };

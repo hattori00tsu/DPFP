@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { supabaseAdmin } from './supabase-admin';
+import { fetchTweetFullText, normalizeTweetText } from './twitter-text';
 
 export interface SNSPost {
   platform: string;
@@ -231,7 +232,7 @@ export class SNSScraper {
         const pubDateMatch = itemMatch.match(/<pubDate>(.*?)<\/pubDate>/);
 
         if (titleMatch && linkMatch) {
-          const title = titleMatch[1] || '';
+          let title = titleMatch[1] || '';
           const link = linkMatch[1] || '';
           const pubDate = pubDateMatch ? pubDateMatch[1] : '';
           
@@ -281,6 +282,13 @@ export class SNSScraper {
               if (first) thumbnailUrl = first;
             }
           }
+
+          // RSSの省略を公式シンジケーションJSONで補完
+          if (postId) {
+            const full = await fetchTweetFullText(postId);
+            if (full) title = full;
+          }
+          title = normalizeTweetText(title);
 
           posts.push({
             platform: this.normalizePlatformForPosts(platformKey),

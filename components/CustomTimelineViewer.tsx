@@ -226,7 +226,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
         return p ? p.name_ja : '';
     };
 
-    const truncateContent = (content?: string | null, maxLength: number = 200) => {
+    const truncateContent = (content?: string | null, maxLength: number = 140) => {
         if (!content) return '';
         if (content.length <= maxLength) return content;
         return content.substring(0, maxLength) + '...';
