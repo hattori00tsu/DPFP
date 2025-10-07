@@ -29,6 +29,7 @@ export default function DashboardPage() {
       .from('custom_timelines')
       .select('id, name, description')
       .eq('user_id', profile.id)
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

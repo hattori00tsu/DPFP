@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 
+// 簡易メモリキャッシュ（Vercelエッジ/Nodeの短命プロセス想定のためTTL短め）
+const cache = new Map<string, { expires: number; json: any }>();
+const inflight = new Map<string, Promise<any>>();
+
 // カスタムタイムライン投稿の一括取得API
 // GET /api/custom-timeline?timelineId=xxx&page=1&limit=20
 export async function GET(request: NextRequest) {
@@ -17,7 +21,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // 認証: AuthorizationヘッダーのJWTを検証
-    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization');
+    const authHeader = request.headers.get('authorization') || request.headers.get('Authorization') || '';
     const token = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
     if (!token) {
       return NextResponse.json({ error: '認証が必要です' }, { status: 401 });
@@ -28,6 +32,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: '認証に失敗しました' }, { status: 401 });
     }
     const userId = userRes.user.id;
+
+    // ユーザー単位のキャッシュキー
+    const now = Date.now();
+    const cacheKey = `${userId}:${timelineId}:${page}:${limit}`;
+
+    // ヒットすれば返却
+    const hit = cache.get(cacheKey);
+    if (hit && hit.expires > now) {
+      return NextResponse.json(hit.json);
+    }
+
+    // 同一キーの同時実行をまとめる
+    const inFlight = inflight.get(cacheKey);
+    if (inFlight) {
+      const json = await inFlight;
+      return NextResponse.json(json);
+    }
+
+    const run = (async (): Promise<any> => {
 
     // タイムライン設定を取得（所有者チェック）
     const { data: timeline, error: timelineError } = await supabaseAdmin
@@ -141,8 +164,16 @@ export async function GET(request: NextRequest) {
 
     const { data: posts, error } = await query as any;
     if (error) throw error;
+    const json = { posts: posts || [] };
+    // 30秒キャッシュ
+    cache.set(cacheKey, { expires: now + 30_000, json });
+    return json;
+    })();
 
-    return NextResponse.json({ posts: posts || [] });
+    inflight.set(cacheKey, run);
+    const json = await run;
+    inflight.delete(cacheKey);
+    return NextResponse.json(json);
   } catch (error) {
     console.error('Error in /api/custom-timeline:', error);
     return NextResponse.json({ error: 'タイムラインの取得に失敗しました' }, { status: 500 });

@@ -27,7 +27,14 @@ export default function ProfilePage() {
 
   // SWR fetchers
   const jsonFetcher = async (url: string) => {
-    const res = await fetch(url);
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      cache: 'no-store',
+    });
     if (!res.ok) throw new Error('Failed to fetch');
     return res.json();
   };
@@ -38,17 +45,13 @@ export default function ProfilePage() {
   );
   const demographics: UserDemographics | null = demographicsResp?.demographics ?? null;
 
-  const { data: subscriptionResp, mutate: mutateSubscription, isLoading: loadingSubscription } = useSWR(
-    profile ? `/api/subscription?userId=${profile.id}` : null,
+  // サブスクリプションとプラン一覧をサマリAPIで一括取得
+  const { data: summaryResp, mutate: mutateSummary, isLoading: loadingSummary } = useSWR(
+    profile ? `/api/subscriptions/summary?userId=${profile.id}` : null,
     jsonFetcher
   );
-  const subscription: { planId: string; planName: string; priceJpy: number; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null } | null = subscriptionResp?.subscription ?? null;
-
-  const { data: plansResp, isLoading: loadingPlans } = useSWR(
-    '/api/plans',
-    jsonFetcher
-  );
-  const plans: Array<{ id: string; plan_key: string; name: string; price_jpy: number; max_custom_timelines: number }> = plansResp?.plans ?? [];
+  const subscription: { planId: string; planName: string; priceJpy: number; status: string; currentPeriodStart: string | null; currentPeriodEnd: string | null } | null = summaryResp?.subscription ?? null;
+  const plans: Array<{ id: string; plan_key: string; name: string; price_jpy: number; max_custom_timelines: number }> = summaryResp?.plans ?? [];
 
   // Stripe成功遷移時は即時反映を試みる + SWR再検証
   useEffect(() => {
@@ -79,13 +82,13 @@ export default function ProfilePage() {
           });
         } catch (e) {
         } finally {
-          mutateSubscription();
+          mutateSummary();
         }
       }
     };
 
     runSync();
-  }, [profile, mutateSubscription]);
+  }, [profile, mutateSummary]);
 
   // Realtime 購読（demographics, subscriptions）
   useEffect(() => {
@@ -96,14 +99,14 @@ export default function ProfilePage() {
         mutateDemographics();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_subscriptions', filter: `user_id=eq.${profile.id}` }, () => {
-        mutateSubscription();
+        mutateSummary();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [profile, mutateDemographics, mutateSubscription]);
+  }, [profile, mutateDemographics, mutateSummary]);
 
   const handleChangePlan = async (planId: string, planKey: string, price: number) => {
     if (!profile) return;
@@ -130,7 +133,7 @@ export default function ProfilePage() {
           .from('user_subscriptions')
           .upsert({ user_id: profile.id, plan_id: planId, status: 'active' }, { onConflict: 'user_id' });
         if (error) throw error;
-        await mutateSubscription();
+        await mutateSummary();
         alert('プランを更新しました');
       }
     } catch (e) {
@@ -224,7 +227,7 @@ export default function ProfilePage() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
 
-  const isLoading = loadingDemographics || loadingSubscription || loadingPlans;
+  const isLoading = loadingDemographics || loadingSummary;
   if (isLoading) {
     return (
       <Layout>
@@ -432,18 +435,6 @@ export default function ProfilePage() {
               </form>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">ユーザーID</h3>
-                  <p className="text-gray-900 font-mono text-sm bg-gray-50 p-2 rounded">{profile.id}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">ロール</h3>
-                  <p className="text-gray-900">
-                    <span className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm font-medium">
-                      {profile.role}
-                    </span>
-                  </p>
-                </div>
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">生まれた年</h3>
                   <p className="text-gray-900">{demographics?.birth_year ? `${demographics.birth_year}年` : '未設定'}</p>

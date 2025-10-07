@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Layout } from '@/components/Layout';
+import useSWR from 'swr';
 
 type Plan = {
   id: string;
@@ -24,40 +25,41 @@ type UserSubscription = {
 };
 
 export default function PricingPage() {
-  const [plans, setPlans] = useState<Plan[]>([]);
   const [current, setCurrent] = useState<UserSubscription | null>(null);
-  const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
 
+  const jsonFetcher = async (url: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(url, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error('Failed to fetch');
+    return res.json();
+  };
+
+  const [userId, setUserId] = useState<string | null>(null);
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id || null;
-
-        const { data: planRows } = await supabase
-          .from('subscription_plans')
-          .select('id, plan_key, name, description, price_jpy, max_custom_timelines, is_active')
-          .eq('is_active', true)
-          .order('sort_order', { ascending: true });
-
-        setPlans(planRows || []);
-
-        if (userId) {
-          const { data: sub } = await supabase
-            .from('user_subscriptions')
-            .select('id, user_id, plan_id, status')
-            .eq('user_id', userId)
-            .maybeSingle();
-          if (sub) setCurrent(sub);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUserId(session?.user?.id ?? null);
+    })();
   }, []);
+
+  const { data: summaryResp, isLoading } = useSWR(
+    '/api/subscriptions/summary' + (userId ? `?userId=${userId}` : ''),
+    jsonFetcher
+  );
+  const plans: Plan[] = summaryResp?.plans ?? [];
+  const subscription = summaryResp?.subscription ?? null;
+  useEffect(() => {
+    if (subscription) {
+      setCurrent({ id: 'current', user_id: userId || '', plan_id: subscription.planId } as any);
+    }
+  }, [subscription, userId]);
 
   const selectedPlanId = current?.plan_id || null;
   const selectedPlan = useMemo(() => plans.find((p) => p.id === selectedPlanId) || null, [plans, selectedPlanId]);
@@ -95,7 +97,7 @@ export default function PricingPage() {
 
   const priceText = (price: number) => (price === 0 ? '無料' : `¥${price.toLocaleString()}/月`);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
