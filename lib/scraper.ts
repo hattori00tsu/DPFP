@@ -454,23 +454,7 @@ export class KokuminScraper {
           '熊本': '43', '大分': '44', '宮崎': '45', '鹿児島': '46', '沖縄': '47'
         };
 
-        let prefecture = '48'; // デフォルトは「全国どこでも」
-        let location = '';
-        
-        // 「全国どこでも」の場合
-        if (parentText.includes('全国どこでも') || parentText.includes('全国')) {
-          prefecture = '48';
-          location = '全国どこでも';
-        } else {
-          // 都道府県名を検索
-          for (const [prefName, prefCode] of Object.entries(prefectureMap)) {
-            if (parentText.includes(prefName)) {
-              prefecture = prefCode;
-              location = prefName;
-              break;
-            }
-          }
-        }
+        const { prefecture, location } = this.inferPrefectureAndLocation(title, parentText);
 
         // イベントカテゴリを推定（UIのeventTypeLabelsに合わせる）
         const category = this.inferEventCategory(title, parentText);
@@ -570,16 +554,7 @@ export class KokuminScraper {
         '徳島': '36', '香川': '37', '愛媛': '38', '高知': '39', '福岡': '40', '佐賀': '41', '長崎': '42',
         '熊本': '43', '大分': '44', '宮崎': '45', '鹿児島': '46', '沖縄': '47'
       } as const;
-      let prefecture = '48';
-      let location = '';
-      if (parentText.includes('全国どこでも') || parentText.includes('全国')) {
-        prefecture = '48';
-        location = '全国どこでも';
-      } else {
-        for (const [prefName, prefCode] of Object.entries(prefectureMap)) {
-          if (parentText.includes(prefName)) { prefecture = prefCode; location = prefName; break; }
-        }
-      }
+      const { prefecture, location } = this.inferPrefectureAndLocation(title, parentText);
 
       // カテゴリ推定
       const category = this.inferEventCategory(title, parentText);
@@ -718,6 +693,51 @@ export class KokuminScraper {
     }
 
     return 'other';
+  }
+
+  // タイトル・本文から都道府県コードと表示用ロケーション名を推定
+  private inferPrefectureAndLocation(title: string, context: string): { prefecture: string; location: string } {
+    const prefMap: Record<string, string> = {
+      '北海道': '01', '青森': '02', '岩手': '03', '宮城': '04', '秋田': '05', '山形': '06', '福島': '07',
+      '茨城': '08', '栃木': '09', '群馬': '10', '埼玉': '11', '千葉': '12', '東京': '13', '東京都': '13', '神奈川': '14',
+      '新潟': '15', '富山': '16', '石川': '17', '福井': '18', '山梨': '19', '長野': '20', '岐阜': '21',
+      '静岡': '22', '愛知': '23', '三重': '24', '滋賀': '25', '京都': '26', '大阪': '27', '兵庫': '28',
+      '奈良': '29', '和歌山': '30', '鳥取': '31', '島根': '32', '岡山': '33', '広島': '34', '山口': '35',
+      '徳島': '36', '香川': '37', '愛媛': '38', '高知': '39', '福岡': '40', '佐賀': '41', '長崎': '42',
+      '熊本': '43', '大分': '44', '宮崎': '45', '鹿児島': '46', '沖縄': '47'
+    };
+
+    const text = `${title || ''} ${context || ''}`;
+    if (text.includes('全国どこでも') || text.includes('全国')) {
+      return { prefecture: '48', location: '全国どこでも' };
+    }
+
+    // 括弧内表記や区切りにも対応: 「【東京】...」「(大阪)」「［京都］」「- 福岡」等
+    const bracketPatterns = [
+      /[【\[]\s*([^\]】]+)\s*[】\]]/g,
+      /\(([^)]+)\)/g,
+      /[-–—]\s*([^\s　、,·・]+)\s*$/gm
+    ];
+
+    const candidates: string[] = [];
+    for (const re of bracketPatterns) {
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text))) {
+        if (m[1]) candidates.push(m[1].trim());
+      }
+    }
+    // 本文全体も合わせて都道府県名を走査
+    candidates.push(text);
+
+    for (const cand of candidates) {
+      for (const [name, code] of Object.entries(prefMap)) {
+        if (cand.includes(name)) {
+          return { prefecture: code, location: name };
+        }
+      }
+    }
+
+    return { prefecture: '48', location: '' };
   }
 
   private async fetchArticleContent(url: string): Promise<string | undefined> {
