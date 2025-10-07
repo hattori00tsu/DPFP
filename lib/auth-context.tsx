@@ -34,7 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const isProtectedPath = (path: string | null) => {
         if (!path) return false;
         return (
-          path.startsWith('/dashboard') ||
           path.startsWith('/profile') ||
           path.startsWith('/admin') ||
           path.startsWith('/settings')

@@ -8,7 +8,7 @@ export default function AboutPage() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <h1 className="text-2xl font-bold text-gray-900 pt-4 pb-4">利用規約</h1>
 <p className="text-gray-600 pb-4 text-lg">1. はじめに</p>
-<p className="text-gray-600 pb-4 text-lg">この利用規約(以下、本規約)は、国民ファンダムが提供するすべてのサービス(以下、本サービス)の利用条件を定めるものです。ユーザーの皆様には、本規約に従って本サービスをご利用いただきます。</p>
+<p className="text-gray-600 pb-4 text-lg">この利用規約(以下、本規約)は、こくみんファンダムが提供するすべてのサービス(以下、本サービス)の利用条件を定めるものです。ユーザーの皆様には、本規約に従って本サービスをご利用いただきます。</p>
 
 <p className="text-gray-600 pb-4 text-lg">2. 利用登録</p>
 <p className="text-gray-600 pb-4 text-lg">本サービスの利用を希望する方は、本規約に同意の上、当社の定める方法によって利用登録を行う必要があります。当社は、利用登録の申請者に以下の事由があると判断した場合、利用登録を拒否することがあります。</p>

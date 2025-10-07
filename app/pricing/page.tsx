@@ -111,7 +111,7 @@ export default function PricingPage() {
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">ご支援のお願い</h1>
           <p className="text-gray-600">
-            このプロジェクトは有志による非公式プロジェクトであり、サーバー代やAPIの費用は自己負担です。
+            このプロジェクトは有志による非公式プロジェクトであり、サーバー代やAPIの費用は自己負担です。※課金システムは未実装です。
           </p>
         </div>
 

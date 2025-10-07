@@ -11,6 +11,10 @@ export default function AboutPage() {
       <p className="text-gray-600 pb-4 text-lg">このプロジェクトは有志による非公式プロジェクトであり、サーバー代やAPIによるデータ取得費用は自己負担です。</p>
       <Link href="/pricing" className="text-gray-600 pb-4 text-lg">ご支援はこちらからお願いします。</Link>
     </div>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <h1 className="text-2xl font-bold text-gray-900 pt-4 pb-4">課金システムは未実装です。</h1>
+      <p className="text-gray-600 pb-4 text-lg">課金システムは未実装です。</p>
+    </div>
     </Layout>
     </>
   );

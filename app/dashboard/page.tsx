@@ -68,22 +68,22 @@ export default function DashboardPage() {
     };
   }, [profile, mutateTimelines]);
 
-  if (!profile) {
-    return null;
-  }
+  // 未ログインでも閲覧可能: 匿名時はカスタム機能を非表示
 
   return (
     <Layout>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex justify-between items-start">
-            <button
-              onClick={() => setShowManageModal(true)}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              タイムライン管理
-            </button>
+            {profile && (
+              <button
+                onClick={() => setShowManageModal(true)}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                タイムライン管理
+              </button>
+            )}
           </div>
         </div>
 
@@ -131,15 +131,17 @@ export default function DashboardPage() {
         {activeTab === 'all' ? (
           <PoliticianSNSTimeline />
         ) : (
-          <CustomTimelineViewer 
-            userId={profile.id} 
-            timelineId={activeTab}
-          />
+          profile ? (
+            <CustomTimelineViewer 
+              userId={profile.id} 
+              timelineId={activeTab}
+            />
+          ) : null
         )}
       </div>
 
       {/* タイムライン管理モーダル */}
-      {showManageModal && (
+      {profile && showManageModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">

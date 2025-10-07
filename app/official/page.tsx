@@ -2,12 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Layout } from '@/components/Layout';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
-import { newsreleaseTypeLabels, eventTypeLabels, snsTypeLabels } from '@/public/category';
+import { newsreleaseTypeLabels, eventTypeLabels, snsTypeLabels, mediaTypeLabels } from '@/public/category';
 import { prefectures } from '@/public/prefecture';
 import { Loader as Loader2, Newspaper, Calendar, Share2 } from 'lucide-react';
 
@@ -42,15 +40,25 @@ interface OfficialSnsPost {
   url?: string | null;
 }
 
+interface PrefSnsPost {
+  id: string;
+  prefecture: string;
+  platform: string;
+  published_at: string;
+  title?: string | null;
+  thumbnail_url?: string | null;
+  url?: string | null;
+}
+
 export default function OfficialPage() {
-  const router = useRouter();
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'news' | 'events' | 'sns'>('news');
+  const [activeTab, setActiveTab] = useState<'news' | 'events' | 'sns' | 'pref-sns'>('news');
 
   // カテゴリー選択状態（デフォルトで全て選択）
   const [selectedNewsCategories, setSelectedNewsCategories] = useState<string[]>(Object.keys(newsreleaseTypeLabels));
   const [selectedEventCategories, setSelectedEventCategories] = useState<string[]>(Object.keys(eventTypeLabels));
   const [selectedSnsCategories, setSelectedSnsCategories] = useState<string[]>(Object.keys(snsTypeLabels));
+  const [selectedPrefSnsCategories, setSelectedPrefSnsCategories] = useState<string[]>(Object.keys(mediaTypeLabels));
   const [selectedPrefectures, setSelectedPrefectures] = useState<string[]>(prefectures.map(p => p.id));
 
   // ポップアップは廃止（都道府県もインライン選択）
@@ -91,6 +99,26 @@ export default function OfficialPage() {
   const newsData: OfficialNews[] = (combinedData?.news as OfficialNews[]) || [];
   const eventsData: OfficialEvent[] = (combinedData?.events as OfficialEvent[]) || [];
   const snsData: OfficialSnsPost[] = (combinedData?.sns as OfficialSnsPost[]) || [];
+
+  // 支部SNSフェッチャー
+  const prefSnsFetcher = async () => {
+    const params = new URLSearchParams();
+    if (selectedPrefSnsCategories.length > 0) params.set('snsCategories', selectedPrefSnsCategories.join(','));
+    if (selectedPrefectures.length > 0) params.set('prefectures', selectedPrefectures.join(','));
+    params.set('limit', '100');
+    const res = await fetch(`/api/official/pref-sns?${params.toString()}`, { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to fetch pref sns');
+    return res.json();
+  };
+
+  const { data: prefData, mutate: mutatePref, isLoading: loadingPref } = useSWR(
+    ['official-pref-sns', selectedPrefSnsCategories, selectedPrefectures],
+    prefSnsFetcher,
+    { revalidateOnFocus: false, keepPreviousData: true }
+  );
+  const prefSnsData: PrefSnsPost[] = (prefData?.sns as PrefSnsPost[]) || [];
+  const [expandedPrefSnsIds, setExpandedPrefSnsIds] = useState<Record<string, boolean>>({});
+  const togglePrefSnsExpand = (id: string) => setExpandedPrefSnsIds(prev => ({ ...prev, [id]: !prev[id] }));
 
   // 初回のみローディング表示、データがあれば既存データを表示
   const isInitialLoading = loadingCombined && newsData.length === 0 && eventsData.length === 0 && snsData.length === 0;
@@ -138,7 +166,7 @@ export default function OfficialPage() {
       )
       .subscribe();
 
-    // SNS subscription
+    // SNS (党本部) subscription
     const snsChannel = supabase
       .channel('official_sns_posts_changes')
       .on(
@@ -154,13 +182,30 @@ export default function OfficialPage() {
       )
       .subscribe();
 
+    // 支部SNS subscription
+    const prefSnsChannel = supabase
+      .channel('prefectural_sns_posts_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'prefectural_sns_posts'
+        },
+        () => {
+          mutatePref();
+        }
+      )
+      .subscribe();
+
     // Cleanup
     return () => {
       supabase.removeChannel(newsChannel);
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(snsChannel);
+      supabase.removeChannel(prefSnsChannel);
     };
-  }, [mutateCombined]);
+  }, [mutateCombined, mutatePref]);
 
   // カテゴリー選択が変更されたときに自動保存（一時的に無効化）
   // useEffect(() => {
@@ -315,6 +360,18 @@ export default function OfficialPage() {
                 公式SNS
               </div>
             </button>
+            <button
+              onClick={() => setActiveTab('pref-sns')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'pref-sns'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+            >
+              <div className="flex items-center">
+                <Share2 className="w-4 h-4 mr-2" />
+                支部SNS
+              </div>
+            </button>
           </nav>
         </div>
 
@@ -338,7 +395,7 @@ export default function OfficialPage() {
                         </span>
                   </div>
                 )}
-                {activeTab === 'sns' && (
+                {(activeTab === 'sns' || activeTab === 'pref-sns') && (
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-gray-900">SNSカテゴリー選択</span>
                     <span className="px-2 py-0.5 bg-orange-600 text-white text-xs rounded-full">
@@ -469,6 +526,60 @@ export default function OfficialPage() {
                 );
               })}
                   </div>
+                )}
+
+                {activeTab === 'pref-sns' && (
+                  <>
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {Object.entries(mediaTypeLabels).map(([key, label]) => {
+                        const selected = selectedPrefSnsCategories.includes(key);
+                        return (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              if (selected) {
+                                setSelectedPrefSnsCategories(selectedPrefSnsCategories.filter(c => c !== key));
+                              } else {
+                                setSelectedPrefSnsCategories([...selectedPrefSnsCategories, key]);
+                              }
+                            }}
+                            className={`px-3 py-2 rounded-md border transition ${selected
+                              ? 'bg-orange-600 text-white border-orange-600'
+                              : 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100'
+                            }`}
+                          >
+                            <span className="mr-2">{selected ? '〇' : '×'}</span>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {prefectures.map((pref) => {
+                        const selected = selectedPrefectures.includes(pref.id);
+                        return (
+                          <button
+                            key={pref.id}
+                            onClick={() => {
+                              if (selected) {
+                                setSelectedPrefectures(selectedPrefectures.filter(p => p !== pref.id));
+                              } else {
+                                setSelectedPrefectures([...selectedPrefectures, pref.id]);
+                              }
+                              setTimeout(saveUserPreferences, 100);
+                            }}
+                            className={`px-3 py-2 rounded-md border transition ${selected
+                              ? 'bg-purple-600 text-white border-purple-600'
+                              : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                            }`}
+                          >
+                            <span className="mr-2">{selected ? '〇' : '×'}</span>
+                            {pref.name_ja}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
                 )}
             </div>
             )}
@@ -615,17 +726,15 @@ export default function OfficialPage() {
             )}
 
             {activeTab === 'sns' && (
-              <>
+              <div>
                 {snsData.length === 0 ? (
                   <div className="text-center py-12">
                     <p className="text-gray-500">公式SNS投稿が見つかりませんでした</p>
-                    <p className="text-sm text-gray-400 mt-2">
-                      SNSカテゴリーを選択してください
-                    </p>
+                    <p className="text-sm text-gray-400 mt-2">SNSカテゴリーを選択してください</p>
                   </div>
                 ) : (
                   snsData.slice(0, snsVisibleCount).map((sns) => (
-                    <div key={sns.id} className="bg-white rounded-lg shadow-sm border p-6">
+                    <div key={sns.id} className="bg-white rounded-lg shadow-sm border p-6 mb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
@@ -640,9 +749,7 @@ export default function OfficialPage() {
                                 ? snsTypeLabels.iceage
                                 : 'SNS'}
                             </span>
-                            <span className="text-sm text-gray-500">
-                              {new Date(sns.published_at).toLocaleDateString('ja-JP')}
-                            </span>
+                            <span className="text-sm text-gray-500">{new Date(sns.published_at).toLocaleDateString('ja-JP')}</span>
                           </div>
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">
                             {(() => {
@@ -654,12 +761,7 @@ export default function OfficialPage() {
                                 <>
                                   {shown}
                                   {isLong && (
-                                    <button
-                                      onClick={() => toggleSnsExpand(sns.id)}
-                                      className="ml-2 text-xs text-gray-600 underline align-baseline"
-                                    >
-                                      {expanded ? '閉じる' : 'さらに表示'}
-                                    </button>
+                                    <button onClick={() => toggleSnsExpand(sns.id)} className="ml-2 text-xs text-gray-600 underline align-baseline">{expanded ? '閉じる' : 'さらに表示'}</button>
                                   )}
                                 </>
                               );
@@ -667,22 +769,11 @@ export default function OfficialPage() {
                           </h3>
                           {sns.thumbnail_url && (
                             <div className="mb-4">
-                              <img
-                                src={sns.thumbnail_url}
-                                alt={sns.title || 'サムネイル'}
-                                className="w-full max-w-md rounded-md border"
-                              />
+                              <img src={sns.thumbnail_url} alt={sns.title || 'サムネイル'} className="w-full max-w-md rounded-md border" />
                             </div>
                           )}
                           {sns.url && (
-                            <a
-                              href={sns.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-orange-600 hover:text-orange-800 text-sm"
-                            >
-                              投稿を見る →
-                            </a>
+                            <a href={sns.url} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 text-sm">投稿を見る →</a>
                           )}
                         </div>
                       </div>
@@ -691,24 +782,78 @@ export default function OfficialPage() {
                 )}
                 {snsData.length > snsVisibleCount && (
                   <div className="flex justify-center pt-2">
-                    <button
-                      onClick={() => setSnsVisibleCount(snsVisibleCount + 20)}
-                      className="px-4 py-2 text-sm rounded-md border bg-gray-50 hover:bg-gray-100"
-                    >
-                      さらに表示
-                    </button>
+                    <button onClick={() => setSnsVisibleCount(snsVisibleCount + 20)} className="px-4 py-2 text-sm rounded-md border bg-gray-50 hover:bg-gray-100">さらに表示</button>
                   </div>
                 )}
-              </>
+              </div>
+            )}
+            {activeTab === 'pref-sns' && (
+              <div>
+                {prefSnsData.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-500">支部SNS投稿が見つかりませんでした</p>
+                    <p className="text-sm text-gray-400 mt-2">SNSカテゴリーや都道府県を選択してください</p>
+                  </div>
+                ) : (
+                  prefSnsData.slice(0, snsVisibleCount).map((sns) => (
+                    <div key={sns.id} className="bg-white rounded-lg shadow-sm border p-6 mb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                              {sns.platform === 'twitter'
+                                ? snsTypeLabels.X
+                                : sns.platform === 'twitter2'
+                                ? snsTypeLabels.X2
+                                : sns.platform === 'youtube'
+                                ? snsTypeLabels.YouTube
+                                : sns.platform === 'iceage'
+                                ? snsTypeLabels.iceage
+                                : 'SNS'}
+                            </span>
+                            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">{prefectures.find(p => p.id === sns.prefecture)?.name_ja || '不明'}</span>
+                            <span className="text-sm text-gray-500">{new Date(sns.published_at).toLocaleDateString('ja-JP')}</span>
+                          </div>
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {(() => {
+                              const full = sns.title || '投稿';
+                              const isLong = (sns.title?.length || 0) > 140;
+                              const expanded = !!expandedPrefSnsIds[sns.id];
+                              const shown = !isLong || expanded ? full : full.substring(0, 140) + '...';
+                              return (
+                                <>
+                                  {shown}
+                                  {isLong && (
+                                    <button onClick={() => togglePrefSnsExpand(sns.id)} className="ml-2 text-xs text-gray-600 underline align-baseline">{expanded ? '閉じる' : 'さらに表示'}</button>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </h3>
+                          {sns.thumbnail_url && (
+                            <div className="mb-4">
+                              <img src={sns.thumbnail_url} alt={sns.title || 'サムネイル'} className="w-full max-w-md rounded-md border" />
+                            </div>
+                          )}
+                          {sns.url && (
+                            <a href={sns.url} target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:text-orange-800 text-sm">投稿を見る →</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+                {prefSnsData.length > snsVisibleCount && (
+                  <div className="flex justify-center pt-2">
+                    <button onClick={() => setSnsVisibleCount(snsVisibleCount + 20)} className="px-4 py-2 text-sm rounded-md border bg-gray-50 hover:bg-gray-100">さらに表示</button>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}
 
-        {!profile && (
-          <div className="text-center py-12">
-            <p className="text-gray-500">ログインが必要です</p>
-          </div>
-        )}
+        {/* 未ログインでも閲覧可能。ログイン時のみ個別設定の保存UIが表示されます */}
 
         {/* 都道府県のポップアップは廃止（インライン選択に変更） */}
       </div>

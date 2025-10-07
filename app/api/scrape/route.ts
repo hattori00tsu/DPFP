@@ -19,18 +19,28 @@ export async function POST(request: NextRequest) {
         result = await scraper.scrapeEvents();
         break;
       case 'sns':
-        result = await snsScraper.scrapeAllActiveSNS();
+        {
+          const official = await snsScraper.scrapeAllActiveSNS();
+          const pref = await snsScraper.scrapeAllActivePrefecturalSNS();
+          const total = (official.count || 0) + (pref.count || 0);
+          result = {
+            success: official.success || pref.success,
+            message: `SNS取得完了 (党本部: ${official.count || 0}件, 支部: ${pref.count || 0}件, 合計: ${total}件)`
+          };
+        }
         break;
       case 'all':
       default:
         // 全てのソースをスクレイピング
         await scraper.scrapeAllSources();
-        const snsResult = await snsScraper.scrapeAllActiveSNS();
+        const official = await snsScraper.scrapeAllActiveSNS();
+        const pref = await snsScraper.scrapeAllActivePrefecturalSNS();
+        const snsTotal = (official.count || 0) + (pref.count || 0);
         // ユーザータイムライン更新
         await scraper.updateUserTimelines();
         result = {
           success: true,
-          message: `全てのスクレイピングが完了しました (SNS: ${snsResult.count || 0}件)`
+          message: `全てのスクレイピングが完了しました (SNS: 党本部 ${official.count || 0}件 / 支部 ${pref.count || 0}件, 合計 ${snsTotal}件)`
         };
         break;
     }

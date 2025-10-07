@@ -170,7 +170,7 @@ export default function PoliticianList({ politicians, loading, onEdit, onDelete 
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => onEdit(politician)}
+                        onClick={() => window.open(`/admin?edit=${politician.id}`, '_blank', 'noopener,noreferrer')}
                         className="p-2 text-gray-400 hover:text-blue-600 transition-colors"
                       >
                         <Edit className="w-4 h-4" />

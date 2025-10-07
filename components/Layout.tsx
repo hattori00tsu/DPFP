@@ -42,9 +42,7 @@ export function Layout({ children }: LayoutProps) {
     );
   }
 
-  if (!profile) {
-    return null;
-  }
+  // 未ログインでも描画する。個人情報/操作系はログイン時のみ表示
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -53,7 +51,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <Link href="/dashboard" className="flex items-center">
-                <span className="text-2xl font-bold text-primary-600">国民ファンダム</span>
+                <span className="text-2xl font-bold text-primary-600">こくみんファンダム</span>
               </Link>
 
               <div className="hidden md:ml-10 md:flex md:space-x-8">
@@ -156,6 +154,7 @@ export function Layout({ children }: LayoutProps) {
               }
             </div>
             <div className="pt-4 pb-3 border-t border-gray-200">
+              {profile && (
               <div className="flex items-center px-5">
                 <div className="flex-shrink-0">
                   <User className="w-10 h-10 text-gray-400" />
@@ -171,6 +170,7 @@ export function Layout({ children }: LayoutProps) {
                   <LogOut className="w-6 h-6" />
                 </button>
               </div>
+              )}
             </div>
           </div>
         )}

@@ -33,6 +33,70 @@ export class SNSScraper {
     return p;
   }
 
+  // 都道府県支部: 有効なすべてのSNS設定をスクレイピング
+  async scrapeAllActivePrefecturalSNS(): Promise<{ success: boolean; message: string; count?: number }> {
+    try {
+      const { data: settings } = await supabaseAdmin
+        .from('prefectural_sns_settings')
+        .select('*')
+        .eq('is_active', true);
+
+      if (!settings || settings.length === 0) {
+        return {
+          success: false,
+          message: '有効な都道府県支部SNS設定が見つかりません'
+        };
+      }
+
+      let totalCount = 0;
+      const results: string[] = [];
+
+      for (const setting of settings as any[]) {
+        try {
+          const posts = await (async () => {
+            if (this.isTwitterPlatform(setting.platform) && setting.rss_url) {
+              return await this.scrapeTwitterRSS(setting, setting.platform);
+            }
+            if (this.isYouTubePlatform(setting.platform)) {
+              if (setting.rss_url) return await this.scrapeYouTubeRSS(setting, setting.platform);
+              if (setting.scraping_url) {
+                const url = setting.scraping_url as string;
+                const qMatch = url.match(/[?&]channel_id=([^&]+)/);
+                const pathMatch = url.match(/\/channel\/([^/?#]+)/);
+                const channelId = (qMatch && qMatch[1]) || (pathMatch && pathMatch[1]) || '';
+                if (channelId) {
+                  const feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
+                  return await this.scrapeYouTubeRSS(setting, setting.platform, feedUrl);
+                }
+                return await this.scrapeYouTube(setting);
+              }
+            }
+            return [] as SNSPost[];
+          })();
+
+          const saved = await this.savePrefecturalSNSPosts(posts, setting);
+          totalCount += saved;
+          results.push(`${setting.prefecture}/${setting.platform}: ${saved}件`);
+        } catch (error) {
+          console.error(`Error scraping prefectural ${setting.platform}:`, error);
+          results.push(`${setting.prefecture}/${setting.platform}: エラー`);
+        }
+      }
+
+      return {
+        success: true,
+        message: `都道府県支部SNS投稿 ${totalCount}件を取得しました (${results.join(', ')})`,
+        count: totalCount
+      };
+    } catch (error) {
+      console.error('Error in scrapeAllActivePrefecturalSNS:', error);
+      return {
+        success: false,
+        message: `都道府県支部SNS取得中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
   private isTwitterPlatform(platform: string): boolean {
     const p = (platform || '').toLowerCase();
     return p === 'twitter' || p === 'x' || p === 'x2';
@@ -470,6 +534,55 @@ export class SNSScraper {
     }
   }
 
+  // 都道府県支部: 投稿保存
+  private async savePrefecturalSNSPosts(posts: SNSPost[], setting: any): Promise<number> {
+    let savedCount = 0;
+    for (const post of posts) {
+      try {
+        // 重複チェック（post_id または URL）
+        let existingPost = null as any;
+        if (post.postId) {
+          const { data } = await supabaseAdmin
+            .from('prefectural_sns_posts')
+            .select('id')
+            .eq('platform', post.platform)
+            .eq('post_id', post.postId)
+            .single();
+          existingPost = data;
+        } else {
+          const { data } = await supabaseAdmin
+            .from('prefectural_sns_posts')
+            .select('id')
+            .eq('url', post.url)
+            .single();
+          existingPost = data;
+        }
+
+        if (existingPost) {
+          continue;
+        }
+
+        const { error } = await supabaseAdmin
+          .from('prefectural_sns_posts')
+          .insert({
+            sns_setting_id: setting.id,
+            prefecture: setting.prefecture,
+            platform: post.platform,
+            post_id: post.postId,
+            title: post.title,
+            url: post.url,
+            published_at: post.publishedAt.toISOString(),
+            thumbnail_url: post.thumbnailUrl || (post.platform === 'youtube' && post.postId ? `https://i.ytimg.com/vi/${post.postId}/hqdefault.jpg` : null)
+          });
+
+        if (!error) savedCount += 1;
+      } catch (error) {
+        console.error('Error saving prefectural SNS post:', error);
+      }
+    }
+    return savedCount;
+  }
+
   // SNS設定の管理メソッド
   async getSNSSettings(): Promise<SNSSetting[]> {
     const { data, error } = await supabaseAdmin
@@ -565,6 +678,62 @@ export class SNSScraper {
         success: false,
         message: `設定の削除中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}`
       };
+    }
+  }
+
+  // 都道府県支部: 設定取得
+  async getPrefSNSSettings(): Promise<any[]> {
+    const { data, error } = await supabaseAdmin
+      .from('prefectural_sns_settings')
+      .select('*')
+      .order('prefecture')
+      .order('platform');
+    if (error) {
+      console.error('Error fetching prefectural SNS settings:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  async createPrefSNSSetting(setting: { prefecture: string; platform: string; account_name: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('prefectural_sns_settings')
+        .insert({ ...setting })
+        .select()
+        .single();
+      if (error) return { success: false, message: `設定の作成に失敗しました: ${error.message}` };
+      return { success: true, message: 'SNS設定を作成しました', data };
+    } catch (error) {
+      return { success: false, message: `設定の作成中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  async updatePrefSNSSetting(id: string, updates: Partial<{ prefecture: string; platform: string; account_name: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }>): Promise<{ success: boolean; message: string; data?: any }> {
+    try {
+      const { data, error } = await supabaseAdmin
+        .from('prefectural_sns_settings')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) return { success: false, message: `設定の更新に失敗しました: ${error.message}` };
+      return { success: true, message: 'SNS設定を更新しました', data };
+    } catch (error) {
+      return { success: false, message: `設定の更新中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    }
+  }
+
+  async deletePrefSNSSetting(id: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const { error } = await supabaseAdmin
+        .from('prefectural_sns_settings')
+        .delete()
+        .eq('id', id);
+      if (error) return { success: false, message: `設定の削除に失敗しました: ${error.message}` };
+      return { success: true, message: 'SNS設定を削除しました' };
+    } catch (error) {
+      return { success: false, message: `設定の削除中にエラーが発生しました: ${error instanceof Error ? error.message : 'Unknown error'}` };
     }
   }
 }

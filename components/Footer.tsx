@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Twitter, MessageCircle } from 'lucide-react';
+import { X } from 'lucide-react';
 
 export function Footer() {
   return (
@@ -105,18 +105,8 @@ export function Footer() {
                 className="flex items-center space-x-2 hover:text-white transition-colors duration-200"
                 aria-label="X (Twitter)"
               >
-                <Twitter className="w-6 h-6" />
+                <X className="w-6 h-6" />
                 <span>X</span>
-              </a>
-              <a
-                href="https://discord.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center space-x-2 hover:text-white transition-colors duration-200"
-                aria-label="Discord"
-              >
-                <MessageCircle className="w-6 h-6" />
-                <span>Discord</span>
               </a>
             </div>
           </div>
@@ -124,7 +114,7 @@ export function Footer() {
 
         {/* Copyright */}
         <div className="mt-8 pt-8 border-t border-gray-800 text-center text-sm">
-          <p>&copy; {new Date().getFullYear()} 国民ファンダム. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} こくみんファンダム. All rights reserved.</p>
         </div>
       </div>
     </footer>

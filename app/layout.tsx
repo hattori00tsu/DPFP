@@ -9,7 +9,7 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: '国民ファンダム - 国民民主党 党員向け情報統合システム',
+  title: 'こくみんファンダム - 国民民主党 党員向け情報統合システム',
   description: '国民民主党の議員・党員・アクティブサポーター向けの情報統合プラットフォーム',
 };
 

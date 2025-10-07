@@ -7,7 +7,9 @@ import { useAuth } from '@/lib/auth-context';
 import PoliticianList from '@/components/admin/PoliticianList';
 import PoliticianForm from '../../components/admin/PoliticianForm';
 import SNSSettingsManager from '@/components/admin/SNSSettingsManager';
+import PrefSNSSettingsManager from '@/components/admin/PrefSNSSettingsManager';
 import { Plus, Users, Settings, Download, RefreshCw, MessageSquare, X } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { prefectures } from '@/public/prefecture';
 import { politicianTypeLabels } from '@/public/category';
@@ -27,6 +29,7 @@ interface Politician {
 }
 
 export default function AdminPage() {
+    const searchParams = useSearchParams();
     const { profile } = useAuth();
     const isAuthorized = !!profile && (profile.role === 'staff' || profile.role === 'politician');
 
@@ -94,6 +97,37 @@ export default function AdminPage() {
             supabase.removeChannel(channel);
         };
     }, [mutatePoliticians, isAuthorized]);
+
+    // クエリ ?edit=<id> に応じてフォームを新規タブで開いた際にも自動表示
+    useEffect(() => {
+        const editId = searchParams?.get('edit');
+        if (!editId) return;
+
+        // 既に取得済みの一覧から対象を探す。見つからない場合は軽く取得を試みる。
+        const found = politicians.find((p: any) => p.id === editId);
+        if (found) {
+            setEditingPolitician(found as any);
+            setShowForm(true);
+            setActiveTab('form');
+            return;
+        }
+
+        // 単体取得（APIが存在するため）
+        (async () => {
+            try {
+                const res = await fetch(`/api/admin/politicians/${editId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const p = data.politician || data;
+                    if (p && p.id) {
+                        setEditingPolitician(p);
+                        setShowForm(true);
+                        setActiveTab('form');
+                    }
+                }
+            } catch {}
+        })();
+    }, [searchParams, politicians]);
 
     const handleAddNew = () => {
         setEditingPolitician(null);
@@ -239,7 +273,7 @@ export default function AdminPage() {
                         >
                             <div className="flex items-center">
                                 <MessageSquare className="w-4 h-4 mr-2" />
-                                SNS設定
+                                党本部SNS設定
                             </div>
                         </button>
                         {showForm && (
@@ -505,7 +539,10 @@ export default function AdminPage() {
                 )}
 
                 {activeTab === 'sns-settings' && (
-                    <SNSSettingsManager />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <SNSSettingsManager />
+                        <PrefSNSSettingsManager />
+                    </div>
                 )}
 
                 {activeTab === 'form' && showForm && (
