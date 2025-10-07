@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Save, X, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
-import { snsTypeLabels, politicianTypeLabels } from '@/public/category';
+import { mediaTypeLabels, politicianTypeLabels } from '@/public/category';
 import { prefectures } from '@/public/prefecture';
 
 interface SNSAccount {
@@ -41,8 +41,8 @@ const POSITIONS = Object.entries(politicianTypeLabels).map(([key, label]) => ({
 
 // 地域の個別選択は廃止（都道府県コードと統合）
 
-// /public/category.tsx の snsTypeLabels をそのまま候補に使用
-const PLATFORM_OPTIONS = Object.entries(snsTypeLabels).map(([key, label]) => ({
+// /public/category.tsx の mediaTypeLabels をそのまま候補に使用
+const PLATFORM_OPTIONS = Object.entries(mediaTypeLabels).map(([key, label]) => ({
   value: key,
   label
 }));

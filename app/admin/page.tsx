@@ -10,6 +10,7 @@ import SNSSettingsManager from '@/components/admin/SNSSettingsManager';
 import { Plus, Users, Settings, Download, RefreshCw, MessageSquare, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { prefectures } from '@/public/prefecture';
+import { politicianTypeLabels } from '@/public/category';
 
 interface Politician {
     id: string;
@@ -297,14 +298,9 @@ export default function AdminPage() {
                                         className="w-full border rounded-md px-3 py-2 text-sm bg-white"
                                     >
                                         <option value="">すべて</option>
-                                        <option value="representative">衆議院議員</option>
-                                        <option value="senator">参議院議員</option>
-                                        <option value="house_representatives">衆議院</option>
-                                        <option value="house_councillors">参議院</option>
-                                        <option value="national_diet">国会議員</option>
-                                        <option value="local">地方議員</option>
-                                        <option value="local_assembly">地方議員候補</option>
-                                        <option value="candidate">候補者</option>
+                                        {Object.entries(politicianTypeLabels).map(([key, label]) => (
+                                            <option key={key} value={key}>{label}</option>
+                                        ))}
                                     </select>
                                 </div>
                                 <div className="flex items-end">

@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { prefectures } from '@/public/prefecture';
 import { politicianTypeLabels, snsTypeLabels } from '@/public/category';
 
+
 interface Preference {
   id: string;
   preference_type: string;

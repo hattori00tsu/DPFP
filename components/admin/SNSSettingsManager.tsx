@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { Plus, Edit2, Trash2, Save, X, Twitter, Youtube } from 'lucide-react';
-import { snsTypeLabels } from '@/public/category';
+import { snsTypeLabels,mediaTypeLabels } from '@/public/category';
 import { supabase } from '@/lib/supabase';
 
 interface SNSSetting {

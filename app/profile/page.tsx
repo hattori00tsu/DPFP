@@ -60,15 +60,18 @@ export default function ProfilePage() {
     const subscribed = params.get('subscribed');
     const sessionId = params.get('session_id');
 
+    // チェックアウトからの戻り以外では重い同期処理を実行しない
+    if (!(subscribed === '1' && sessionId)) {
+      return;
+    }
+
     const runSync = async () => {
       try {
-        if (subscribed === '1' && sessionId) {
-          await fetch('/api/stripe/confirm', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId }),
-          });
-        }
+        await fetch('/api/stripe/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
       } catch (e) {
       } finally {
         try {

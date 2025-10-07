@@ -6,6 +6,8 @@ import { Search, ListFilter as Filter, X, ChevronDown } from 'lucide-react';
 import { Button } from './ui/Button';
 import { filterDefaultsService } from '@/lib/supabase-filter-defaults';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { prefectures } from '@/public/prefecture';
+import { politicianTypeLabels } from '@/public/category';
 
 interface FilterBarProps {
   filters: FilterState;
@@ -96,16 +98,6 @@ export function FilterBar({ filters, onFilterChange, politicians, regions }: Fil
     { value: 'sns', label: 'SNS' },
   ];
 
-  // 都道府県リスト
-  const prefectures = [
-    '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-    '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-    '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県',
-    '静岡県', '愛知県', '三重県', '滋賀県', '京都府', '大阪府', '兵庫県',
-    '奈良県', '和歌山県', '鳥取県', '島根県', '岡山県', '広島県', '山口県',
-    '徳島県', '香川県', '愛媛県', '高知県', '福岡県', '佐賀県', '長崎県',
-    '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
-  ];
 
   // 複数選択の処理関数
   const handleMultiSelectChange = async <T extends string>(
@@ -235,7 +227,7 @@ export function FilterBar({ filters, onFilterChange, politicians, regions }: Fil
       const defaultFilters = {
         newsCategories: ['policy', 'media', 'parliament'] as PostCategory[],
         eventCategories: ['rally', 'volunteer', 'meeting', 'other'] as EventType[],
-        prefectures: prefectures,
+        prefectures: prefectures.map(p => p.id),
         snsCategories: ['party_hq', 'politician', 'sns'] as PostSourceType[],
       };
       setMultiSelectFilters(defaultFilters);
@@ -399,10 +391,10 @@ export function FilterBar({ filters, onFilterChange, politicians, regions }: Fil
 
             <MultiSelectDropdown
               label="都道府県"
-              items={prefectures.map(p => ({ value: p, label: p }))}
+              items={prefectures.map(p => ({ value: p.id, label: p.name_ja }))}
               selectedItems={multiSelectFilters.prefectures}
               onItemChange={(value, checked) => handleMultiSelectChange('prefectures', value, checked)}
-              onSelectAll={() => handleSelectAll('prefectures', prefectures)}
+              onSelectAll={() => handleSelectAll('prefectures', prefectures.map(p => p.id)  )}
               onDeselectAll={() => handleDeselectAll('prefectures')}
             />
 

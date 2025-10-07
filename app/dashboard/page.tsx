@@ -100,7 +100,7 @@ export default function DashboardPage() {
             >
               <div className="flex items-center">
                 <Users className="w-4 h-4 mr-2" />
-                すべて
+                すべての国会議員
               </div>
             </button>
             {/* カスタムタイムラインをタブとして表示 */}

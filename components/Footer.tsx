@@ -99,7 +99,7 @@ export function Footer() {
             <h3 className="text-white text-lg font-semibold mb-4">Social</h3>
             <div className="flex space-x-4">
               <a
-                href="https://twitter.com"
+                href="https://x.com/hattorivv0000kk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 hover:text-white transition-colors duration-200"
