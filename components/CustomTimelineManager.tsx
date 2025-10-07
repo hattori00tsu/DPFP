@@ -111,6 +111,7 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPrefecture, setSelectedPrefecture] = useState('');
   const [selectedPosition, setSelectedPosition] = useState('');
+  const [maxTimelines, setMaxTimelines] = useState<number>(3);
 
   // フォーム状態
   const [formData, setFormData] = useState({
@@ -134,6 +135,7 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
       .from('custom_timelines')
       .select('*')
       .eq('user_id', userId)
+      .eq('is_active', true)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -156,6 +158,34 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
     timelinesFetcher,
     { revalidateOnFocus: false }
   );
+
+  const subscriptionFetcher = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`/api/subscriptions/summary?userId=${userId}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) throw new Error('Failed to fetch subscription');
+    return res.json();
+  };
+
+  const { data: subscriptionResp } = useSWR(
+    userId ? `subscription-${userId}` : null,
+    subscriptionFetcher,
+    { revalidateOnFocus: false }
+  );
+
+  useEffect(() => {
+    const limit = subscriptionResp?.subscription?.maxCustomTimelines;
+    if (typeof limit === 'number' && limit > 0) {
+      setMaxTimelines(limit);
+    } else {
+      setMaxTimelines(3);
+    }
+  }, [subscriptionResp]);
 
   const { data: politicians = [], error: politiciansError } = useSWR(
     'politicians',
@@ -246,11 +276,14 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
                 Object.entries(perPref).filter(([k, v]) => k in mediaTypeLabels && v)
               )
             : null;
-          return {
+          const base: any = {
             timeline_id: timeline.id,
-            prefecture_code: prefCode,
-            enabled_platforms: enabled && Object.keys(enabled).length > 0 ? enabled : null
-          } as any;
+            prefecture_code: prefCode
+          };
+          if (enabled && Object.keys(enabled).length > 0) {
+            base.enabled_platforms = enabled;
+          }
+          return base;
         });
 
         const { error: prefError } = await supabase
@@ -279,8 +312,8 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
       mutateTimelines();
     } catch (error: any) {
       console.error('Error creating timeline:', error);
-      if (error.message.includes('タイムラインの上限')) {
-        alert('タイムラインの上限は3つまでです');
+      if (typeof error?.message === 'string' && error.message.includes('タイムラインの上限')) {
+        alert(`タイムラインの上限は${maxTimelines}個までです`);
       }
     }
   };
@@ -411,11 +444,14 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
                 Object.entries(perPref).filter(([k, v]) => k in mediaTypeLabels && v)
               )
             : null;
-          return {
+          const base: any = {
             timeline_id: editingTimeline.id,
-            prefecture_code: prefCode,
-            enabled_platforms: enabled && Object.keys(enabled).length > 0 ? enabled : null
-          } as any;
+            prefecture_code: prefCode
+          };
+          if (enabled && Object.keys(enabled).length > 0) {
+            base.enabled_platforms = enabled;
+          }
+          return base;
         });
 
         const { error: prefError } = await supabase
@@ -540,11 +576,11 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
         <h2 className="text-2xl font-bold text-gray-900">カスタムタイムライン</h2>
         <button
           onClick={() => setShowCreateModal(true)}
-          disabled={timelines.length >= 3}
+          disabled={timelines.length >= maxTimelines}
           className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4 mr-2" />
-          新規作成 ({timelines.length}/3)
+          新規作成 ({timelines.length}/{maxTimelines})
         </button>
       </div>
 

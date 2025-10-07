@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabase';
 import { Clock, ExternalLink, Tag } from 'lucide-react';
 
 interface NewsItem {
@@ -31,22 +33,44 @@ export default function NewsTimeline({ userId }: NewsTimelineProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // SWRで1ページ目をキャッシュし、Realtimeで更新時のみ再取得
+  const { data: swrResp, isLoading, mutate } = useSWR(
+    userId ? `/api/timeline?userId=${userId}&page=1&limit=20` : null,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  );
+
   useEffect(() => {
-    fetchTimeline();
-  }, [userId]);
+    if (swrResp?.timeline) {
+      setTimeline(swrResp.timeline);
+      setHasMore(swrResp.timeline.length === 20);
+      setPage(1);
+      setLoading(false);
+    }
+  }, [swrResp]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`news-timeline-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_timeline', filter: `user_id=eq.${userId}` }, () => {
+        mutate();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, mutate]);
 
   const fetchTimeline = async (pageNum = 1) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/timeline?userId=${userId}&page=${pageNum}&limit=20`);
       const data = await response.json();
-
       if (data.timeline) {
-        if (pageNum === 1) {
-          setTimeline(data.timeline);
-        } else {
-          setTimeline(prev => [...prev, ...data.timeline]);
-        }
+        if (pageNum === 1) setTimeline(data.timeline);
+        else setTimeline(prev => [...prev, ...data.timeline]);
         setHasMore(data.timeline.length === 20);
       }
     } catch (error) {
@@ -110,7 +134,7 @@ export default function NewsTimeline({ userId }: NewsTimelineProps) {
     return colors[category as keyof typeof colors] || colors.default;
   };
 
-  if (loading && timeline.length === 0) {
+  if ((loading || isLoading) && timeline.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>

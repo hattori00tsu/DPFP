@@ -13,14 +13,14 @@ interface LayoutProps {
 }
 
 const navigation = [
-  { name: 'ホーム', href: '/dashboard', icon: Home },
-  { name: '公式情報', href: '/official', icon: Calendar },
-  { name: 'プロフィール', href: '/profile', icon: User },
-  { name: 'プラン', href: '/pricing', icon: CreditCard },
+  { name: 'ダッシュボード', href: '/dashboard'},
+  { name: '公式情報', href: '/official' },
+  { name: 'プロフィール', href: '/profile'},
+  { name: 'プラン', href: '/pricing' },
 ];
 
 const adminNavigation = [
-  { name: '管理画面', href: '/admin', icon: Shield },
+  { name: '管理画面', href: '/admin'},
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -58,7 +58,6 @@ export function Layout({ children }: LayoutProps) {
 
               <div className="hidden md:ml-10 md:flex md:space-x-8">
                 {navigation.map((item) => {
-                  const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
@@ -69,7 +68,6 @@ export function Layout({ children }: LayoutProps) {
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                         }`}
                     >
-                      <Icon className="w-4 h-4 mr-2" />
                       {item.name}
                     </Link>
                   );
@@ -78,7 +76,6 @@ export function Layout({ children }: LayoutProps) {
                 {/* 管理者のみ表示 */}
                 {(profile?.role === 'staff' || profile?.role === 'politician') &&
                   adminNavigation.map((item) => {
-                    const Icon = item.icon;
                     const isActive = pathname === item.href;
                     return (
                       <Link
@@ -89,7 +86,7 @@ export function Layout({ children }: LayoutProps) {
                             : 'border-transparent text-red-500 hover:text-red-700 hover:border-red-300'
                           }`}
                       >
-                        <Icon className="w-4 h-4 mr-2" />
+                        <Shield className="w-4 h-4 mr-2" />
                         {item.name}
                       </Link>
                     );
@@ -126,7 +123,6 @@ export function Layout({ children }: LayoutProps) {
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-2 pt-2 pb-3 space-y-1">
               {navigation.map((item) => {
-                const Icon = item.icon;
                 const isActive = pathname === item.href;
                 return (
                   <Link
@@ -139,7 +135,7 @@ export function Layout({ children }: LayoutProps) {
                       }`}
                   >
                     <div className="flex items-center">
-                      <Icon className="w-5 h-5 mr-3" />
+                      <Home className="w-5 h-5 mr-3" />
                       {item.name}
                     </div>
                   </Link>
@@ -149,7 +145,6 @@ export function Layout({ children }: LayoutProps) {
               {/* 管理者のみ表示 */}
               {(profile?.role === 'staff' || profile?.role === 'politician') &&
                 adminNavigation.map((item) => {
-                  const Icon = item.icon;
                   const isActive = pathname === item.href;
                   return (
                     <Link
@@ -162,7 +157,7 @@ export function Layout({ children }: LayoutProps) {
                         }`}
                     >
                       <div className="flex items-center">
-                        <Icon className="w-5 h-5 mr-3" />
+                        <Shield className="w-5 h-5 mr-3" />
                         {item.name}
                       </div>
                     </Link>

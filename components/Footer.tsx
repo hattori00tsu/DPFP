@@ -20,10 +20,10 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/Footer/donate"
+                  href="/Footer/support"
                   className="hover:text-white transition-colors duration-200"
                 >
-                  寄付のお願い
+                  支援のお願い
                 </Link>
               </li>
             </ul>
@@ -61,7 +61,7 @@ export function Footer() {
               </li>
               <li>
                 <Link
-                  href="/Footer/ "
+                  href="/Footer/law"
                   className="hover:text-white transition-colors duration-200"
                 >
                   特定商取引法に基づく表記

@@ -67,6 +67,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
     const [loadingPosts, setLoadingPosts] = useState(false);
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
+    const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
 
     // SWR for timelines
     const timelinesFetcher = async () => {
@@ -74,6 +75,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
             .from('custom_timelines')
             .select('*')
             .eq('user_id', userId)
+            .eq('is_active', true)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
@@ -162,6 +164,10 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
         const nextPage = page + 1;
         setPage(nextPage);
         fetchTimelinePosts(selectedTimelineId, nextPage);
+    };
+
+    const toggleExpand = (id: string) => {
+        setExpandedMap(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
     const formatDate = (dateString: string) => {
@@ -282,6 +288,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
                 <div className="space-y-4">
                     {posts.map((post: any) => {
                         const politician = post.politicians;
+                        const expanded = !!expandedMap[post.id];
                         
                         return (
                             <div key={post.id} className="bg-white rounded-lg shadow-sm border p-6">
@@ -306,9 +313,19 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
                                             </div>
                                         )}
 
-                                        <p className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">
-                                            {truncateContent(post.content)}
-                                        </p>
+                                        <div className="mb-4">
+                                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                                {expanded ? (post.content || '') : truncateContent(post.content)}
+                                            </p>
+                                            {(post.content && post.content.length > 200) && (
+                                                <button
+                                                    className="ml-2 text-xs text-gray-600 underline align-baseline"
+                                                    onClick={() => toggleExpand(post.id)}
+                                                >
+                                                    {expanded ? '閉じる' : 'さらに表示'}
+                                                </button>
+                                            )}
+                                        </div>
 
                                         {post.thumbnail_url && (
                                             <div className="mb-4">
@@ -346,7 +363,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
                                 disabled={loadingPosts}
                                 className="px-6 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
                             >
-                                {loadingPosts ? '読み込み中...' : 'もっと見る'}
+                                {loadingPosts ? '読み込み中...' : 'さらに表示'}
                             </button>
                         </div>
                     )}

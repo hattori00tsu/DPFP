@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabase';
 import { Clock, ExternalLink, Heart, MessageCircle, Share, MapPin, Badge } from 'lucide-react';
 import { politicianTypeLabels } from '@/public/category';
 import { prefectures } from '@/public/prefecture';
@@ -46,10 +48,56 @@ export default function PoliticianSNSTimeline({ userId }: PoliticianSNSTimelineP
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [expandedMap, setExpandedMap] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedMap(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  // SWRで1ページ目を取得・キャッシュし、Realtimeの更新時のみ再取得
+  const { data: swrResp, isLoading, mutate } = useSWR(
+    `/api/sns-timeline?page=1&limit=20${userId ? `&userId=${userId}` : ''}`,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  );
 
   useEffect(() => {
-    fetchTimeline();
-  }, [userId]);
+    if (swrResp?.snsTimeline) {
+      setTimeline(swrResp.snsTimeline);
+      setHasMore(swrResp.snsTimeline.length === 20);
+      setPage(1);
+      setLoading(false);
+    }
+  }, [swrResp]);
+
+  useEffect(() => {
+    // 新規投稿が入ったら再取得
+    const channel = supabase
+      .channel('politician_sns_posts_changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'politician_sns_posts' }, () => {
+        mutate();
+      })
+      .subscribe();
+
+    // ユーザー専用タイムラインを使う場合の更新検知（既読/いいね等）
+    let userChannel: ReturnType<typeof supabase.channel> | null = null;
+    if (userId) {
+      userChannel = supabase
+        .channel(`user_sns_timeline_${userId}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'user_sns_timeline', filter: `user_id=eq.${userId}` }, () => {
+          mutate();
+        })
+        .subscribe();
+    }
+
+    return () => {
+      supabase.removeChannel(channel);
+      if (userChannel) supabase.removeChannel(userChannel);
+    };
+  }, [userId, mutate]);
 
   const fetchTimeline = async (pageNum = 1) => {
     try {
@@ -193,13 +241,9 @@ export default function PoliticianSNSTimeline({ userId }: PoliticianSNSTimelineP
     return politicianTypeLabels[position as keyof typeof politicianTypeLabels] || position;
   };
 
-  const truncateContent = (content?: string | null, maxLength: number = 140) => {
-    if (!content) return '';
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + '...';
-  };
+  const MAX_PREVIEW = 140;
 
-  if (loading && timeline.length === 0) {
+  if ((loading || isLoading) && timeline.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -244,9 +288,27 @@ export default function PoliticianSNSTimeline({ userId }: PoliticianSNSTimelineP
                       </div>
                     )}
 
-                    <p className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">
-                      {truncateContent(post.content, 200) || '投稿'}
-                    </p>
+                    <div className="text-sm text-gray-700 mb-4 whitespace-pre-wrap">
+                      {(() => {
+                        const full = post.content || '投稿';
+                        const isLong = (post.content?.length || 0) > MAX_PREVIEW;
+                        const expanded = !!expandedMap[post.id];
+                        const shown = !isLong || expanded ? full : full.substring(0, MAX_PREVIEW) + '...';
+                        return (
+                          <>
+                            <p>{shown}</p>
+                            {isLong && (
+                              <button
+                                onClick={() => toggleExpand(post.id)}
+                                className="mt-1 text-xs text-gray-600 underline"
+                              >
+                                {expanded ? '閉じる' : 'さらに表示'}
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
 
                     {(post.thumbnail_url || post.media_urls?.[0]) && (
                       <div className="mb-4">

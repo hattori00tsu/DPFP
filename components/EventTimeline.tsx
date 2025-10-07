@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import { supabase } from '@/lib/supabase';
 import { Calendar, MapPin, Users, ExternalLink, Clock, Heart, User } from 'lucide-react';
 
 interface EventItem {
@@ -38,22 +40,44 @@ export default function EventTimeline({ userId }: EventTimelineProps) {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  // SWRで1ページ目をキャッシュし、Realtimeで更新時のみ再取得
+  const { data: swrResp, isLoading, mutate } = useSWR(
+    userId ? `/api/events?userId=${userId}&page=1&limit=20` : null,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    }
+  );
+
   useEffect(() => {
-    fetchTimeline();
-  }, [userId]);
+    if (swrResp?.eventTimeline) {
+      setTimeline(swrResp.eventTimeline);
+      setHasMore(swrResp.eventTimeline.length === 20);
+      setPage(1);
+      setLoading(false);
+    }
+  }, [swrResp]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`event-timeline-${userId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'user_event_timeline', filter: `user_id=eq.${userId}` }, () => {
+        mutate();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, mutate]);
 
   const fetchTimeline = async (pageNum = 1) => {
     try {
       setLoading(true);
       const response = await fetch(`/api/events?userId=${userId}&page=${pageNum}&limit=20`);
       const data = await response.json();
-
       if (data.eventTimeline) {
-        if (pageNum === 1) {
-          setTimeline(data.eventTimeline);
-        } else {
-          setTimeline(prev => [...prev, ...data.eventTimeline]);
-        }
+        if (pageNum === 1) setTimeline(data.eventTimeline);
+        else setTimeline(prev => [...prev, ...data.eventTimeline]);
         setHasMore(data.eventTimeline.length === 20);
       }
     } catch (error) {
@@ -153,7 +177,7 @@ export default function EventTimeline({ userId }: EventTimelineProps) {
     return new Date(eventDate) < new Date();
   };
 
-  if (loading && timeline.length === 0) {
+  if ((loading || isLoading) && timeline.length === 0) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
