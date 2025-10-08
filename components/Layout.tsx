@@ -15,6 +15,7 @@ interface LayoutProps {
 const navigation = [
   { name: 'ダッシュボード', href: '/dashboard'},
   { name: '公式情報', href: '/official' },
+  { name: '都道府県別一覧', href: '/directory' },
   { name: 'プロフィール', href: '/profile'},
   { name: 'プラン', href: '/pricing' },
 ];

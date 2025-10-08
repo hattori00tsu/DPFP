@@ -14,9 +14,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { prefecture, platform, account_name, account_url, rss_url, scraping_url, youtube_channel_id, is_active } = body;
+    const { prefecture, platform, account_url, rss_url, scraping_url, youtube_channel_id, is_active } = body;
 
-    if (!prefecture || !platform || !account_name || !account_url) {
+    if (!prefecture || !platform || !account_url) {
       return NextResponse.json({ error: '必須項目が不足しています' }, { status: 400 });
     }
 
@@ -31,12 +31,11 @@ export async function POST(request: NextRequest) {
     const result = await scraper.createPrefSNSSetting({
       prefecture,
       platform,
-      account_name,
       account_url,
       rss_url: nextRss,
       scraping_url,
       is_active
-    });
+    } as any);
 
     if (!result.success) return NextResponse.json({ error: result.message }, { status: 400 });
     return NextResponse.json({ message: result.message, setting: result.data });

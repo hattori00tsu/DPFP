@@ -56,9 +56,9 @@ export default function PoliticianForm({ politician, onSuccess, onCancel }: Poli
     profile_url: ''
   });
 
-  const [prefectureCode, setPrefectureCode] = useState<string>(() => {
+  const [prefectureCodes, setPrefectureCodes] = useState<string[]>(() => {
     const tokyo = prefectures.find(p => p.name_ja === '東京都');
-    return tokyo ? tokyo.id : (prefectures[0]?.id || '13');
+    return [tokyo ? tokyo.id : (prefectures[0]?.id || '13')];
   });
 
   const [snsAccounts, setSnsAccounts] = useState<SNSAccount[]>([]);
@@ -77,8 +77,12 @@ export default function PoliticianForm({ politician, onSuccess, onCancel }: Poli
       });
 
       const anyPolitician: any = politician as any;
-      if (anyPolitician && typeof anyPolitician.prefecture === 'string' && anyPolitician.prefecture.length > 0) {
-        setPrefectureCode(anyPolitician.prefecture);
+      if (anyPolitician) {
+        if (Array.isArray(anyPolitician.politician_prefectures) && anyPolitician.politician_prefectures.length > 0) {
+          setPrefectureCodes(anyPolitician.politician_prefectures.map((pp: any) => pp.prefecture_code));
+        } else if (typeof anyPolitician.prefecture === 'string' && anyPolitician.prefecture.length > 0) {
+          setPrefectureCodes([anyPolitician.prefecture]);
+        }
       }
 
       if (politician.politician_sns_accounts) {
@@ -235,7 +239,7 @@ export default function PoliticianForm({ politician, onSuccess, onCancel }: Poli
         },
         body: JSON.stringify({
           ...formData,
-          prefecture: prefectureCode,
+          prefectures: prefectureCodes,
           sns_accounts: normalizedAccounts
         })
       });
@@ -296,20 +300,31 @@ export default function PoliticianForm({ politician, onSuccess, onCancel }: Poli
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                都道府県コード（必須）
+                都道府県（複数選択可）
               </label>
-              <select
-                required
-                value={prefectureCode}
-                onChange={(e) => setPrefectureCode(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {prefectures.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.name_ja}（{p.id}）
-                  </option>
-                ))}
-              </select>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 p-2 border border-gray-300 rounded-md">
+                {prefectures.map(p => {
+                  const checked = prefectureCodes.includes(p.id);
+                  return (
+                    <label key={p.id} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setPrefectureCodes(prev => {
+                            if (e.target.checked) return Array.from(new Set([...prev, p.id]));
+                            return prev.filter(code => code !== p.id);
+                          });
+                        }}
+                      />
+                      <span>{p.name_ja}（{p.id}）</span>
+                    </label>
+                  );
+                })}
+              </div>
+              {prefectureCodes.length === 0 && (
+                <p className="mt-1 text-xs text-red-600">少なくとも1つ選択してください</p>
+              )}
             </div>
 
             <div>

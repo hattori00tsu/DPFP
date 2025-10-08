@@ -49,6 +49,14 @@ export default function PoliticianList({ politicians, loading, onEdit, onDelete 
     return p ? p.name_ja : '';
   };
 
+  const renderPrefectures = (politician: any) => {
+    const codes: string[] = Array.isArray(politician.politician_prefectures) && politician.politician_prefectures.length > 0
+      ? politician.politician_prefectures.map((pp: any) => pp.prefecture_code)
+      : (politician.prefecture ? [politician.prefecture] : []);
+    if (codes.length === 0) return '';
+    return codes.map((c) => getPrefectureName(c)).filter(Boolean).join(' / ');
+  };
+
   const getPlatformLabel = (platform: string) => {
     const labels = {
       twitter: 'X (Twitter)',
@@ -160,7 +168,7 @@ export default function PoliticianList({ politicians, loading, onEdit, onDelete 
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {getPositionLabel(politician.position)}
                         </span>
-                        <span>{getPrefectureName(politician.prefecture) || politician.region || ''}</span>
+                        <span>{renderPrefectures(politician) || politician.region || ''}</span>
                         {politician.party_role && (
                           <span className="text-gray-700 font-medium">
                             {politician.party_role}

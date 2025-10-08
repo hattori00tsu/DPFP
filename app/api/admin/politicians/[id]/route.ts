@@ -12,6 +12,7 @@ export async function GET(
       .from('politicians')
       .select(`
         *,
+        politician_prefectures:politician_prefectures (prefecture_code),
         politician_sns_accounts (
           id,
           platform,
@@ -50,7 +51,7 @@ export async function PUT(
     const {
       name,
       position,
-      prefecture,
+      prefectures, // 複数コード
       region,
       party_role,
       bio,
@@ -65,7 +66,8 @@ export async function PUT(
       .update({
         name,
         position,
-        prefecture,
+        // 互換目的で単一prefecture列は最初の要素を保存（なければNULLにしない）
+        prefecture: Array.isArray(prefectures) && prefectures.length > 0 ? prefectures[0] : null,
         region,
         party_role,
         bio,
@@ -75,6 +77,27 @@ export async function PUT(
       .eq('id', id)
       .select()
       .single();
+    // 都道府県の多対多を更新
+    if (Array.isArray(prefectures)) {
+      // 既存削除
+      await supabaseAdmin
+        .from('politician_prefectures')
+        .delete()
+        .eq('politician_id', id);
+
+      // 追加
+      if (prefectures.length > 0) {
+        const rows = [...new Set(prefectures.filter((c: string) => c && c.trim()))].map((code: string) => ({
+          politician_id: id,
+          prefecture_code: code
+        }));
+        if (rows.length > 0) {
+          await supabaseAdmin
+            .from('politician_prefectures')
+            .insert(rows);
+        }
+      }
+    }
 
     if (politicianError) throw politicianError;
 

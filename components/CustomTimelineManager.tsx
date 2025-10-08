@@ -167,13 +167,19 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
     };
   }, [userId, mutateTimelines]);
 
-  const filteredPoliticians = politicians.filter(politician => {
+  const filteredPoliticians = politicians.filter((politician: any) => {
     const matchesSearch = searchTerm === '' || 
       politician.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       politician.name_kana.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesPrefecture = selectedPrefecture === '' || 
-      politician.prefecture === selectedPrefecture;
+    const matchesPrefecture = (() => {
+      if (selectedPrefecture === '') return true;
+      // 多対多対応: politician_prefectures があればそこで判定、なければ単一列を参照
+      if (Array.isArray(politician.politician_prefectures) && politician.politician_prefectures.length > 0) {
+        return politician.politician_prefectures.some((pp: any) => pp.prefecture_code === selectedPrefecture);
+      }
+      return politician.prefecture === selectedPrefecture;
+    })();
     
     const matchesPosition = selectedPosition === '' || 
       politician.position === selectedPosition;
@@ -770,7 +776,13 @@ export default function CustomTimelineManager({ userId }: CustomTimelineManagerP
                       <div className="flex-1">
                         <div className="font-medium">{politician.name}</div>
                         <div className="text-sm text-gray-500">
-                          {prefectures.find(p => p.id === politician.prefecture)?.name_ja} - {POSITION_LABELS[politician.position as keyof typeof POSITION_LABELS]}
+                          {(() => {
+                            const codes: string[] = Array.isArray((politician as any).politician_prefectures) && (politician as any).politician_prefectures.length > 0
+                              ? (politician as any).politician_prefectures.map((pp: any) => pp.prefecture_code)
+                              : (politician.prefecture ? [politician.prefecture] : []);
+                            const names = codes.map(c => prefectures.find(p => p.id === c)?.name_ja).filter(Boolean).join(' / ');
+                            return `${names} - ${POSITION_LABELS[politician.position as keyof typeof POSITION_LABELS]}`;
+                          })()}
                         </div>
                       </div>
                     </button>

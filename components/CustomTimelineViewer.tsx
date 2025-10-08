@@ -250,7 +250,7 @@ export default function CustomTimelineViewer({ userId, timelineId }: CustomTimel
                 <div className="text-center py-12">
                     <p className="text-gray-500 mb-4">カスタムタイムラインがありません</p>
                     <p className="text-sm text-gray-400">
-                        右上の「タイムライン管理」ボタンから新しいタイムラインを作成してください
+                        右上の「カスタムタイムライン」ボタンから新しいタイムラインを作成してください
                     </p>
                 </div>
             );

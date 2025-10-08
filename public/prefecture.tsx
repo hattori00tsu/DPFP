@@ -60,5 +60,3 @@ export const prefectures = [
     {"id":"59","name_ja":"参院比例区","name_en":"All over the country"},
   ]
   
-
-  

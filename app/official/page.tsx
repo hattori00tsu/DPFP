@@ -801,15 +801,16 @@ export default function OfficialPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                              {sns.platform === 'twitter'
-                                ? snsTypeLabels.X
-                                : sns.platform === 'twitter2'
-                                ? snsTypeLabels.X2
-                                : sns.platform === 'youtube'
-                                ? snsTypeLabels.YouTube
-                                : sns.platform === 'iceage'
-                                ? snsTypeLabels.iceage
-                                : 'SNS'}
+                              {(() => {
+                                const p = String(sns.platform || '').toLowerCase();
+                                if (p === 'twitter' || p === 'x' || p === 'twitter2') return mediaTypeLabels.x;
+                                if (p === 'youtube') return mediaTypeLabels.youtube;
+                                if (p === 'instagram') return mediaTypeLabels.instagram;
+                                if (p === 'facebook') return mediaTypeLabels.facebook;
+                                if (p === 'note') return mediaTypeLabels.note;
+                                if (p === 'election_dot_com') return mediaTypeLabels.election_dot_com;
+                                return 'SNS';
+                              })()}
                             </span>
                             <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">{prefectures.find(p => p.id === sns.prefecture)?.name_ja || '不明'}</span>
                             <span className="text-sm text-gray-500">{new Date(sns.published_at).toLocaleDateString('ja-JP')}</span>

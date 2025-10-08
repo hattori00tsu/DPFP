@@ -116,6 +116,7 @@ export default function Home() {
               <p className="text-gray-600">
                 お住まいの地域や関心のある分野に基づいて、
                 関連性の高い情報を優先的に表示します。
+                ※ログインが必要です
               </p>
             </div>
           </div>

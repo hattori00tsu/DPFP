@@ -13,6 +13,7 @@ export async function GET(request: NextRequest) {
       .from('politicians')
       .select(`
         *,
+        politician_prefectures:politician_prefectures (prefecture_code),
         politician_sns_accounts (
           id,
           platform,
@@ -30,9 +31,7 @@ export async function GET(request: NextRequest) {
       query = query.ilike('name', `%${name.trim()}%`);
     }
 
-    if (prefecture && prefecture.trim() !== '') {
-      query = query.eq('prefecture', prefecture.trim());
-    }
+    // prefectureのDBレベルフィルタは難しいため、後段で絞り込み
 
     if (position && position.trim() !== '') {
       query = query.eq('position', position.trim());
@@ -42,7 +41,19 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ politicians });
+    // prefectureフィルタをクライアント側で適用（上のin句が使えない場合のフォールバック）
+    let result = politicians || [];
+    if (prefecture && prefecture.trim() !== '') {
+      const pref = prefecture.trim();
+      result = result.filter((p: any) => {
+        if (Array.isArray(p.politician_prefectures) && p.politician_prefectures.length > 0) {
+          return p.politician_prefectures.some((pp: any) => pp.prefecture_code === pref);
+        }
+        return p.prefecture === pref;
+      });
+    }
+
+    return NextResponse.json({ politicians: result });
   } catch (error) {
     console.error('Error fetching politicians:', error);
     return NextResponse.json(
@@ -58,7 +69,7 @@ export async function POST(request: NextRequest) {
     const {
       name,
       position,
-      prefecture,
+      prefectures,
       party_role,
       bio,
       profile_url,
@@ -71,13 +82,26 @@ export async function POST(request: NextRequest) {
       .insert({
         name,
         position,
-        prefecture,
+        // 互換のため単一列にも先頭を保存
+        prefecture: Array.isArray(prefectures) && prefectures.length > 0 ? prefectures[0] : null,
         party_role,
         bio,
         profile_url
       })
       .select()
       .single();
+    // 都道府県の多対多を追加
+    if (politician && Array.isArray(prefectures) && prefectures.length > 0) {
+      const rows = [...new Set(prefectures.filter((c: string) => c && c.trim()))].map((code: string) => ({
+        politician_id: politician.id,
+        prefecture_code: code
+      }));
+      if (rows.length > 0) {
+        await supabaseAdmin
+          .from('politician_prefectures')
+          .insert(rows);
+      }
+    }
 
     if (politicianError) throw politicianError;
 

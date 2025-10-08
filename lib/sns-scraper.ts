@@ -695,11 +695,21 @@ export class SNSScraper {
     return data || [];
   }
 
-  async createPrefSNSSetting(setting: { prefecture: string; platform: string; account_name: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }): Promise<{ success: boolean; message: string; data?: any }> {
+  async createPrefSNSSetting(setting: { prefecture: string; platform: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }): Promise<{ success: boolean; message: string; data?: any }> {
     try {
+      // account_name はDB定義上 NOT NULL のため、URLから簡易に生成
+      const derivedName = (() => {
+        try {
+          const u = new URL(setting.account_url);
+          const path = u.pathname.replace(/\/$/, '');
+          return path.split('/').filter(Boolean).pop() || u.hostname;
+        } catch {
+          return setting.account_url;
+        }
+      })();
       const { data, error } = await supabaseAdmin
         .from('prefectural_sns_settings')
-        .insert({ ...setting })
+        .insert({ ...setting, account_name: derivedName })
         .select()
         .single();
       if (error) return { success: false, message: `設定の作成に失敗しました: ${error.message}` };
@@ -709,11 +719,22 @@ export class SNSScraper {
     }
   }
 
-  async updatePrefSNSSetting(id: string, updates: Partial<{ prefecture: string; platform: string; account_name: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }>): Promise<{ success: boolean; message: string; data?: any }> {
+  async updatePrefSNSSetting(id: string, updates: Partial<{ prefecture: string; platform: string; account_url: string; rss_url?: string; scraping_url?: string; is_active?: boolean; }>): Promise<{ success: boolean; message: string; data?: any }> {
     try {
+      // account_url 更新時には account_name も自動更新
+      const next: any = { ...updates, updated_at: new Date().toISOString() };
+      if (updates.account_url) {
+        try {
+          const u = new URL(updates.account_url);
+          const path = u.pathname.replace(/\/$/, '');
+          next.account_name = path.split('/').filter(Boolean).pop() || u.hostname;
+        } catch {
+          next.account_name = updates.account_url;
+        }
+      }
       const { data, error } = await supabaseAdmin
         .from('prefectural_sns_settings')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(next)
         .eq('id', id)
         .select()
         .single();
