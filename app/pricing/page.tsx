@@ -61,7 +61,15 @@ export default function PricingPage() {
     }
   }, [subscription, userId]);
 
-  const selectedPlanId = current?.plan_id || null;
+  const freePlanId = useMemo(() => {
+    return (plans.find((p) => p.plan_key === 'free')?.id) || null;
+  }, [plans]);
+
+  // 未ログイン時は見た目上「無料プランを選択中」として扱う
+  const selectedPlanId = useMemo(() => {
+    return current?.plan_id ?? (userId ? null : freePlanId);
+  }, [current, userId, freePlanId]);
+
   const selectedPlan = useMemo(() => plans.find((p) => p.id === selectedPlanId) || null, [plans, selectedPlanId]);
 
   const handleSelect = async (planId: string) => {
@@ -146,6 +154,10 @@ export default function PricingPage() {
                         try {
                           setUpdating(plan.id);
                           const { data: { session } } = await supabase.auth.getSession();
+                          if (!session) {
+                            window.location.href = '/auth';
+                            return;
+                          }
                           if (plan.price_jpy > 0) {
                             const res = await fetch('/api/stripe/checkout', {
                               method: 'POST',

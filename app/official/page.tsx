@@ -100,7 +100,7 @@ export default function OfficialPage() {
   const eventsData: OfficialEvent[] = (combinedData?.events as OfficialEvent[]) || [];
   const snsData: OfficialSnsPost[] = (combinedData?.sns as OfficialSnsPost[]) || [];
 
-  // 支部SNSフェッチャー
+  // 都道府県支部SNSフェッチャー
   const prefSnsFetcher = async () => {
     const params = new URLSearchParams();
     if (selectedPrefSnsCategories.length > 0) params.set('snsCategories', selectedPrefSnsCategories.join(','));
@@ -182,7 +182,7 @@ export default function OfficialPage() {
       )
       .subscribe();
 
-    // 支部SNS subscription
+    // 都道府県支部SNS subscription
     const prefSnsChannel = supabase
       .channel('prefectural_sns_posts_changes')
       .on(
@@ -369,7 +369,7 @@ export default function OfficialPage() {
             >
               <div className="flex items-center">
                 <Share2 className="w-4 h-4 mr-2" />
-                支部SNS
+                都道府県支部SNS
               </div>
             </button>
           </nav>

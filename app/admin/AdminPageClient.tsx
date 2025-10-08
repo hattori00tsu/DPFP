@@ -271,7 +271,7 @@ export default function AdminPageClient() {
                     >
                         <div className="flex items-center">
                             <MessageSquare className="w-4 h-4 mr-2" />
-                            党本部SNS設定
+                            SNS設定
                         </div>
                     </button>
                     {showForm && (

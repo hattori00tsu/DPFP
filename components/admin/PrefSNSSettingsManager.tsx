@@ -123,7 +123,7 @@ export default function PrefSNSSettingsManager() {
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">都道府県支部SNS設定</h2>
-          <p className="text-gray-600 text-sm mt-1">都道府県ごとの支部SNSアカウントを管理します</p>
+          <p className="text-gray-600 text-sm mt-1">都道府県支部SNSアカウントを管理します</p>
         </div>
         <button onClick={() => setShowForm(true)} className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
           <Plus className="w-4 h-4 mr-2" /> 新規追加

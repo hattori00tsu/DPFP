@@ -75,6 +75,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [initialized]);
 
+  // パスが変わったら再度認証チェック（保護ルートなら未ログイン時に/authへ）
+  useEffect(() => {
+    if (initialized) {
+      loadProfile();
+    }
+  }, [pathname, initialized]);
+
   const refreshProfile = async () => {
     await loadProfile();
   };
