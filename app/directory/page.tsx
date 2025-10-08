@@ -34,6 +34,7 @@ interface PoliticianItem {
   prefecture: string;
   profile_url?: string | null;
   politician_sns_accounts?: SNSAccount[];
+  politician_prefectures?: { prefecture_code: string }[];
 }
 
 interface PrefSettingItem {
@@ -110,41 +111,30 @@ function formatPrefNameJa(name: string) {
 export default function DirectoryPage() {
   const { data: politicians = [], isLoading: loadingPoliticians } = useSWR('/api/admin/politicians', fetchPoliticians, { revalidateOnFocus: false });
   const { data: settings = [], isLoading: loadingSettings } = useSWR('/api/admin/pref-sns-settings', fetchPrefSettings, { revalidateOnFocus: false });
-  const latestOnly = false;
   const [selectedPrefId, setSelectedPrefId] = useState<string | null>(null);
   // 地方ごとにボタンをまとめて表示するため、従来のグリッド座標指定は不要
 
-  // 最新投稿データ（支部）
-  const prefIdsParam = useMemo(() => prefectures.map(p => p.id).join(','), []);
-  const mediaKeysParam = useMemo(() => Object.keys(mediaTypeLabels).join(','), []);
-  const prefPostsUrl = latestOnly
-    ? `/api/official/pref-sns?prefectures=${encodeURIComponent(prefIdsParam)}&snsCategories=${encodeURIComponent(mediaKeysParam)}&limit=1000`
-    : null;
-  const prefPostsFetcher = async (url: string) => {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('failed');
-    const j = await res.json();
-    return (j.sns as PrefSnsPost[]) || [];
-  };
-  const { data: prefPosts = [], isLoading: loadingPrefPosts } = useSWR(prefPostsUrl, prefPostsFetcher, { revalidateOnFocus: false });
-
-  // 最新投稿データ（議員）
-  const polPostsUrl = latestOnly ? `/api/sns-timeline?limit=1000` : null;
-  const polPostsFetcher = async (url: string) => {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error('failed');
-    const j = await res.json();
-    return (j.snsTimeline as SnsTimelineItem[]) || [];
-  };
-  const { data: polPosts = [], isLoading: loadingPolPosts } = useSWR(polPostsUrl, polPostsFetcher, { revalidateOnFocus: false });
-
   const loading = loadingPoliticians || loadingSettings;
-  const loadingLatest = latestOnly && (loadingPrefPosts || loadingPolPosts);
 
-  // Group politicians by prefecture
+  // Group politicians by prefecture (prefer relation, fallback to legacy field)
   const polByPref: Record<string, PoliticianItem[]> = {};
   for (const p of politicians) {
-    (polByPref[p.prefecture] ||= []).push(p);
+    const rel = (p as any).politician_prefectures as { prefecture_code: string }[] | undefined;
+    const codes = Array.isArray(rel) && rel.length > 0 ? rel.map(r => String(r.prefecture_code)) : [];
+    if (codes.length > 0) {
+      for (const code of codes) {
+        (polByPref[code] ||= []).push(p);
+      }
+      continue;
+    }
+    if (p.prefecture) {
+      let code = p.prefecture;
+      if (!/^\d{2}$/.test(code)) {
+        const found = prefectures.find(q => q.name_ja === code || formatPrefNameJa(q.name_ja) === code);
+        if (found) code = found.id;
+      }
+      (polByPref[code] ||= []).push(p);
+    }
   }
 
   // Group prefectural branch settings by prefecture (active only)
@@ -154,39 +144,8 @@ export default function DirectoryPage() {
     (prefByPref[s.prefecture] ||= []).push(s);
   }
 
-  // 最新投稿（支部）: 都道府県×プラットフォームで最初の1件
-  const latestPrefPostByPrefPlatform: Record<string, Record<string, PrefSnsPost>> = useMemo(() => {
-    if (!latestOnly) return {};
-    const map: Record<string, Record<string, PrefSnsPost>> = {};
-    for (const post of prefPosts) {
-      const pref = post.prefecture;
-      const p = String(post.platform || '').toLowerCase();
-      const key = (p === 'twitter' || p === 'x' || p === 'twitter2') ? 'x' : p;
-      map[pref] ||= {};
-      if (!map[pref][key]) map[pref][key] = post;
-    }
-    return map;
-  }, [latestOnly, prefPosts]);
 
-  // 最新投稿（議員）: 議員ID×プラットフォームで最初の1件
-  const latestPolPostByPolPlatform: Record<string, Record<string, { url: string; published_at?: string; content?: string | null; thumbnail_url?: string | null }>> = useMemo(() => {
-    if (!latestOnly) return {};
-    const map: Record<string, Record<string, { url: string; published_at?: string; content?: string | null; thumbnail_url?: string | null }>> = {};
-    for (const item of polPosts) {
-      const post = item.politician_sns_posts;
-      if (!post) continue;
-      const pol = post.politicians as any;
-      const polId = pol?.id as string | undefined;
-      if (!polId) continue;
-      const p = String(post.platform || '').toLowerCase();
-      const key = (p === 'twitter' || p === 'x' || p === 'twitter2') ? 'x' : p;
-      const url = post.post_url || '';
-      if (!url) continue;
-      (map[polId] ||= {});
-      if (!map[polId][key]) map[polId][key] = { url, published_at: post.published_at, content: post.content, thumbnail_url: post.thumbnail_url };
-    }
-    return map;
-  }, [latestOnly, polPosts]);
+  // 最新投稿機能は不使用
 
   return (
     <Layout>
@@ -219,7 +178,7 @@ export default function DirectoryPage() {
         </div>
 
         {/* 地域ブロックUI（必要であれば復活可） */}
-        {loading || loadingLatest ? (
+        {loading ? (
           <div className="text-gray-500">読み込み中...</div>
         ) : (
           <div className="text-gray-500">地図上の都道府県をクリックしてください</div>
@@ -245,59 +204,24 @@ export default function DirectoryPage() {
                       <div className="text-sm text-gray-500">設定がありません</div>
                     ) : (
                       <div className="flex flex-wrap gap-2">
-                        {latestOnly
-                          ? (() => {
-                              const postsMap = latestPrefPostByPrefPlatform[selectedPrefId] || {} as Record<string, PrefSnsPost>;
-                              const accByPlat: Record<string, PrefSettingItem> = {};
-                              for (const b of branchList) {
-                                const k = normalizePlatform(b.platform);
-                                if (!accByPlat[k]) accByPlat[k] = b;
-                              }
-                              return Object.entries(accByPlat).map(([platKey, acc]) => {
-                                const post = postsMap[platKey];
-                                const hasPost = Boolean(post);
-                                const text = hasPost ? (post!.title || '投稿') : '最新投稿はまだありません';
-                                const short = text.length > 80 ? text.slice(0, 80) + '…' : text;
-                                return (
-                                  <div key={`${selectedPrefId}-${platKey}`} className="p-3 border rounded-none bg-white max-w-xs">
-                                    <div className="flex items-center justify-between mb-1">
-                                      <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 text-[10px]">{acc.platform}</span>
-                                      <span className="text-[10px] text-gray-500">{hasPost ? new Date(post!.published_at).toLocaleDateString('ja-JP') : '—'}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-800 mb-2 break-words whitespace-normal">{short}</div>
-                                    <div className="flex items-center gap-3">
-                                      <a href={acc.account_url} target="_blank" className="text-[10px] text-blue-600 hover:text-blue-700">公式ページ</a>
-                                      {hasPost && post!.url && (
-                                        <a href={post!.url} target="_blank" className="text-[10px] text-blue-600 hover:text-blue-800">投稿を見る →</a>
-                                      )}
-                                    </div>
-                                  </div>
-                                );
-                              });
-                            })()
-                          : branchList.map(b => {
-                              const platKey = normalizePlatform(b.platform);
-                              return (
-                                <a
-                                  key={b.id}
-                                  href={b.account_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm md:text-base font-semibold shadow-sm"
-                                  aria-label={`${b.platform}`}
-                                >
-                                  {b.platform}
-                                </a>
-                              );
-                            })}
+                        {branchList.map(b => (
+                          <a
+                            key={b.id}
+                            href={b.account_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-300 text-sm md:text-base font-semibold shadow-sm"
+                            aria-label={`${b.platform}`}
+                          >
+                            {b.platform}
+                          </a>
+                        ))}
                       </div>
                     )}
                   </div>
 
                   {/* 議員 */}
                   <div>
-
-
                     {polList.length === 0 ? (
                       <div className="text-sm text-gray-500">登録がありません</div>
                     ) : (
@@ -315,54 +239,20 @@ export default function DirectoryPage() {
                             <div>
                               <div className="text-xs text-gray-500 mb-1">SNS</div>
                               <div className="flex flex-wrap gap-2">
-                                {latestOnly
-                                  ? (() => {
-                                      const postsMap = latestPolPostByPolPlatform[p.id] || {} as Record<string, { url: string; published_at?: string; content?: string | null; thumbnail_url?: string | null }>;
-                                      const accounts = (p.politician_sns_accounts || []).filter(a => a.is_active && a.account_url);
-                                      const accByPlat: Record<string, SNSAccount> = {};
-                                      for (const a of accounts) {
-                                        const k = normalizePlatform(a.platform);
-                                        if (!accByPlat[k]) accByPlat[k] = a;
-                                      }
-                                      return Object.entries(accByPlat).map(([platKey, acc]) => {
-                                        const info = postsMap[platKey];
-                                        const hasPost = Boolean(info);
-                                        const text = hasPost ? (info!.content || '投稿') : '最新投稿はまだありません';
-                                        const short = text.length > 80 ? text.slice(0, 80) + '…' : text;
-                                        return (
-                                          <div key={`${p.id}-${platKey}`} className="p-3 border rounded-none bg-white max-w-xs">
-                                            <div className="flex items-center justify-between mb-1">
-                                              <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 text-[10px]">{acc.platform}</span>
-                                              <span className="text-[10px] text-gray-500">{hasPost && info!.published_at ? new Date(info!.published_at).toLocaleDateString('ja-JP') : '—'}</span>
-                                            </div>
-                                            <div className="text-xs text-gray-800 mb-2 break-words whitespace-normal">{short}</div>
-                                            <div className="flex items-center gap-3">
-                                              <a href={acc.account_url || '#'} target="_blank" className="text-[10px] text-gray-700 hover:text-gray-900 underline">アカウントへ</a>
-                                              {hasPost && (
-                                                <a href={info!.url} target="_blank" className="text-[10px] text-blue-600 hover:text-blue-800">投稿を見る →</a>
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      });
-                                    })()
-                                  : (p.politician_sns_accounts || [])
-                                      .filter(a => a.is_active && a.account_url)
-                                      .map(a => {
-                                        const platKey = normalizePlatform(a.platform);
-                                        return (
-                                          <a
-                                            key={a.id}
-                                            href={a.account_url || '#'}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm md:text-base font-semibold shadow-sm"
-                                            aria-label={`${p.name} の ${a.platform}`}
-                                          >
-                                            {a.platform}
-                                          </a>
-                                        );
-                                      })}
+                                {(p.politician_sns_accounts || [])
+                                  .filter(a => a.is_active && a.account_url)
+                                  .map(a => (
+                                    <a
+                                      key={a.id}
+                                      href={a.account_url || '#'}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center px-3 py-1.5 md:px-4 md:py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300 text-sm md:text-base font-semibold shadow-sm"
+                                      aria-label={`${p.name} の ${a.platform}`}
+                                    >
+                                      {a.platform}
+                                    </a>
+                                  ))}
                               </div>
                             </div>
                           </div>
